@@ -1,0 +1,12 @@
+[submodule "libs/magic_enum"]
+	path = libs/magic_enum
+	url = https://github.com/Neargye/magic_enum.git
+[submodule "libs/SDL-mirror"]
+	path = libs/SDL-mirror
+	url = https://github.com/SDL-mirror/SDL.git
+[submodule "libs/V-EZ"]
+	path = libs/V-EZ
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/V-EZ.git
+[submodule "libs/shaderc"]
+	path = libs/shaderc
+	url = https://github.com/google/shaderc.git
