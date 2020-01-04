@@ -1,0 +1,4 @@
+
+namespace vulkan
+{
+}  // namespace vulkan

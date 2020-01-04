@@ -1,0 +1,8 @@
+BasedOnStyle: Google
+ColumnLimit: 120
+
+BreakBeforeBraces: Allman
+NamespaceIndentation: All
+AlignAfterOpenBracket: DontAlign
+IncludeBlocks: Merge
+AllowShortFunctionsOnASingleLine: None
