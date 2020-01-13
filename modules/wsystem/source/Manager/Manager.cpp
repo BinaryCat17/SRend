@@ -53,11 +53,6 @@ namespace wsystem
       }
     }
 
-    [[nodiscard]] managerExtensions::Vulkan extensionVulkan() const
-    {
-      return managerExtensions::Vulkan(pbase_->extensionVulkan());
-    }
-
    private:
     std::shared_ptr<BaseManager> pbase_;
     std::list<std::shared_ptr<WindowImpl>> windows_;

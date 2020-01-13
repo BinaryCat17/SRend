@@ -1,43 +1,64 @@
-#include "BufferImpl.hpp"
+#include "Buffer.hpp"
 
 namespace vulkan
 {
-  // DeviceLocalBuffer ------------------------------------------------------------------------------------------------
+  // utils ------------------------------------------------------------------------------------------------------------
 
-  std::shared_ptr<DeviceLocalBuffer> createDeviceLocalBuffer(
-      Device const& device, BufferCreateFlags const&, utils::SizeT size, utils::AlignmentT alignment)
+  // BufferImpl -------------------------------------------------------------------------------------------------------
+
+  BufferImpl::BufferImpl(std::shared_ptr<DeviceImpl> device, BufferCreateFlags const&, MemoryType memoryType,
+      BufferUsageFlags const&, utils::SizeT size, utils::AlignmentT alignment)
+      : device_(std::move(device)), allocation_(nullptr)
   {
-    auto alloc = device.getImpl()->getBuffers().deviceLocalManager.allocate(size, alignment);
+    std::pair<vk::Buffer, utils::allocator::Allocation> alloc(nullptr, nullptr);
 
-    return std::make_shared<DeviceLocalBufferImpl>(device, alloc.first, alloc.second);
+    switch (memoryType)
+    {
+      case MemoryType::DeviceLocal:
+        alloc = device->getBuffers().deviceLocalManager.allocate(size, alignment);
+        break;
+      case MemoryType::HostLocal:
+        alloc = device->getBuffers().hostLocalManager.allocate(size, alignment);
+        break;
+      case MemoryType::DeviceToHost:
+        alloc = device->getBuffers().deviceToHostManager.allocate(size, alignment);
+        break;
+      case MemoryType::HostToDivice:
+        alloc = device->getBuffers().hostToDeviceManager.allocate(size, alignment);
+        break;
+    }
+
+    vkBuffer_ = alloc.first;
+    allocation_ = alloc.second;
   }
 
-  // DeviceLocalBuffer ------------------------------------------------------------------------------------------------
-
-  std::shared_ptr<HostLocalBuffer> createHostLocalBuffer(
-      Device const& device, BufferCreateFlags const&, utils::SizeT size, utils::AlignmentT alignment)
+  void* BufferImpl::mapMemory(utils::SizeT size, utils::OffsetT offset)
   {
-    auto alloc = device.getImpl()->getBuffers().hostLocalManager.allocate(size, alignment);
-
-    return std::make_shared<HostLocalBufferImpl>(device, alloc.first, alloc.second);
+    void* pMappedData = nullptr;
+    vezMapBuffer(device_->getVkDevice(), vkBuffer_, offset, size, &pMappedData);
+    return pMappedData;
   }
 
-  std::shared_ptr<HostLocalBuffer> createStagingBuffer(
-      Device const& device, BufferCreateFlags const&, utils::SizeT size, utils::AlignmentT alignment)
+  void BufferImpl::unmapMemory()
   {
-    auto alloc = device.getImpl()->getBuffers().stagingManager.allocate(size, alignment);
-
-    return std::make_shared<HostLocalBufferImpl>(device, alloc.first, alloc.second);
+    vezUnmapBuffer(device_->getVkDevice(), vkBuffer_);
   }
 
-  // DeviceVisibleBuffer ----------------------------------------------------------------------------------------------
+  // Buffer -----------------------------------------------------------------------------------------------------------
 
-  std::shared_ptr<DeviceVisibleBuffer> createDeviceVisibleBuffer(
-      Device const& device, BufferCreateFlags const&, utils::SizeT size, utils::AlignmentT alignment)
+  utils::SizeT Buffer::getSize() const
   {
-    auto alloc = device.getImpl()->getBuffers().deviceVisibleManager.allocate(size, alignment);
+    return pimpl_->size();
+  }
 
-    return std::make_shared<DeviceVisibleBufferImpl>(device, alloc.first, alloc.second);
+  [[nodiscard]] void* Buffer::mapMemory(utils::SizeT size, utils::OffsetT offset)
+  {
+    return pimpl_->mapMemory(size, offset);
+  }
+
+  void Buffer::unmapMemory()
+  {
+    pimpl_->unmapMemory();
   }
 
 }  // namespace vulkan

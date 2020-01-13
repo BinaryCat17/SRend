@@ -1,6 +1,6 @@
 #pragma once
-#include "../../core/Device/DeviceImpl.hpp"
-#include "../../core/Image/ImageImpl.hpp"
+#include "../../core/Device/Device.hpp"
+#include "../../core/Image/Image.hpp"
 #include "../../core/Queue/QueueImpl.hpp"
 #include "../surface/surface_t.hpp"
 #include "swapchain.hpp"

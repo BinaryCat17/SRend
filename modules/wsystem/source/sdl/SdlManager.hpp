@@ -14,8 +14,13 @@ namespace wsystem
         std::string const& title, utils::Extent2D const& extent, WindowCreateFlags createFlags) override;
 
     void removeWindow(std::shared_ptr<BaseWindow> window) override;
-    [[nodiscard]] std::shared_ptr<managerExtensions::VulkanImpl> extensionVulkan() const override;
+
     void update() override;
+
+    [[nodiscard]] std::vector<char const*> getInstanceExtensions() const override;
+
+    [[nodiscard]] VkSurfaceKHR createSurface(
+        std::shared_ptr<BaseWindow> const& window, VkInstance instance) const override;
   };
 
 }  // namespace wsystem

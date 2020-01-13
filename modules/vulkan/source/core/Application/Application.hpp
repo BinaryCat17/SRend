@@ -1,73 +1,56 @@
 #pragma once
-#include <utils/debug.hpp>
-#include "../PhysicalDevice/PhysicalDevice.hpp"
+#include "../../../include/vulkan/core.hpp"
+#include "../../utils.hpp"
 
 namespace vulkan
 {
-  // utils ------------------------------------------------------------------------------------------------------------
+  // ApplicationImpl --------------------------------------------------------------------------------------------------
 
-  // clang-format off
-
-  SR_MAKE_BIT_FLAGS(ApplicationCreate, {};)
-
-  SR_MAKE_BIT_FLAGS(Extensions, {
-    Presentation = 1u << 0u
-  };)
-
-  SR_MAKE_BIT_FLAGS(ValidationLayers, {
-    StandardValidation = 1u << 0u
-  };)
-
-  // clang-format on
-
-  ExtensionsFlags getSupportedExtensions();
-
-  ValidationLayersFlags getSupportedValidationLayers();
-
-  struct ApplicationInfo
-  {
-    ApplicationInfo() = default;
-
-    ApplicationInfo(std::string appName, std::unique_ptr<utils::Version> appVersion, std::string engineName,
-        std::unique_ptr<utils::Version> engineVersion)
-        : appName(std::move(appName)),
-          appVersion(std::move(appVersion)),
-          engineName(std::move(engineName)),
-          engineVersion(std::move(engineVersion))
-    {
-    }
-
-    std::string appName = "Unknown";
-    std::unique_ptr<utils::Version> appVersion = std::make_unique<utils::VersionList>(utils::VersionList{0, 0, 0});
-    std::string engineName = "Unknown";
-    std::unique_ptr<utils::Version> engineVersion = std::make_unique<utils::VersionList>(utils::VersionList{0, 0, 0});
-    ;
-  };
-
-  // Application ------------------------------------------------------------------------------------------------------
-
-  class ApplicationImpl;
-
-  class Application
+  class ApplicationImpl
   {
    public:
-    explicit Application(std::shared_ptr<ApplicationImpl> pimpl) : pimpl_(std::move(pimpl))
+    explicit ApplicationImpl(ApplicationCreateFlags const& createFlags, ApplicationInfo const& appInfo,
+        ExtensionsFlags const& extensions, ValidationLayersFlags const& layers, utils::debug::Messenger messenger);
+
+    ApplicationImpl(ApplicationImpl const&) = delete;
+
+    ApplicationImpl(ApplicationImpl&&) = delete;
+
+    ApplicationImpl& operator=(ApplicationImpl const&) = delete;
+
+    ApplicationImpl& operator=(ApplicationImpl&&) = delete;
+
+    ~ApplicationImpl();
+
+    [[nodiscard]] ExtensionsFlags const& getEnabledExtensions() const
     {
+      return enabledExtensions_;
     }
 
-    [[nodiscard]] std::shared_ptr<ApplicationImpl> const& getImpl() const
+    [[nodiscard]] vk::Instance getVkInstance() const
     {
-      return pimpl_;
+      return vkInstance_;
     }
 
-    explicit Application(ApplicationCreateFlags const& createFlags, ApplicationInfo const& appInfo,
-        ExtensionsFlags const& extensions = {}, ValidationLayersFlags const& layers = {},
-        utils::debug::Messenger const& messenger = {});
+    [[nodiscard]] vk::DispatchLoaderDynamic const& getVkDllLoader() const
+    {
+      return vkDllLoader_;
+    }
 
-    [[nodiscard]] std::vector<PhysicalDevice> getSupportedPhysicalDevices() const;
+    // interface
+
+    [[nodiscard]] std::vector<PhysicalDevice> const& getSupportedPhysicalDevices() const
+    {
+      return physicalDevices_;
+    }
 
    private:
-    std::shared_ptr<ApplicationImpl> pimpl_;
+    ExtensionsFlags enabledExtensions_;
+    vk::Instance vkInstance_;
+    vk::DispatchLoaderDynamic vkDllLoader_;
+    utils::debug::Messenger messenger_;
+    vk::DebugUtilsMessengerEXT vkDebugMessenger_;
+    std::vector<PhysicalDevice> physicalDevices_;
   };
 
 }  // namespace vulkan

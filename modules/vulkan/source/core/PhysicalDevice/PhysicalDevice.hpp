@@ -1,41 +1,40 @@
 #pragma once
-#include <utils/utils.hpp>
+#include "../Application/Application.hpp"
+#include "PhysicalDevice.hpp"
 
 namespace vulkan
 {
-  // utils ------------------------------------------------------------------------------------------------------------
+  // PhysicalDeviceImpl -----------------------------------------------------------------------------------------------
 
-  enum class PhysicalDeviceType
-  {
-    Other,
-    IntegratedGpu,
-    DiscreteGpu,
-    VirtualGpu,
-    Cpu,
-  };
-
-  // PhysicalDevice ---------------------------------------------------------------------------------------------------
-
-  class PhysicalDeviceImpl;
-
-  class PhysicalDevice
+  class PhysicalDeviceImpl
   {
    public:
-    explicit PhysicalDevice(std::shared_ptr<PhysicalDeviceImpl> pimpl) : pimpl_(std::move(pimpl))
+    explicit PhysicalDeviceImpl(vk::PhysicalDevice vkPhysicalDevice) : vkPhysicalDevice_(vkPhysicalDevice)
     {
     }
 
-    [[nodiscard]] std::shared_ptr<PhysicalDeviceImpl> const& getImpl() const
+    PhysicalDeviceImpl(PhysicalDeviceImpl const&) = delete;
+
+    PhysicalDeviceImpl(PhysicalDeviceImpl&&) = delete;
+
+    PhysicalDeviceImpl& operator=(PhysicalDeviceImpl const&) = delete;
+
+    PhysicalDeviceImpl& operator=(PhysicalDeviceImpl&&) = delete;
+
+    [[nodiscard]] vk::PhysicalDevice getVkPhysicalDevice() const
     {
-      return pimpl_;
+      return vkPhysicalDevice_;
     }
 
-    [[nodiscard]] std::string name() const;
+    [[nodiscard]] std::string name() const
+    {
+      return vkPhysicalDevice_.getProperties().deviceName;
+    }
 
     [[nodiscard]] PhysicalDeviceType type() const;
 
    private:
-    std::shared_ptr<PhysicalDeviceImpl> pimpl_;
+    vk::PhysicalDevice vkPhysicalDevice_;
   };
 
 }  // namespace vulkan

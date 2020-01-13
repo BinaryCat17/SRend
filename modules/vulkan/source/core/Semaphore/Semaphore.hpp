@@ -1,26 +1,22 @@
 #pragma once
-#include "../Device/Device.hpp"
+#include <vulkan/vulkan.hpp>
 
 namespace vulkan
 {
-  // Semaphore --------------------------------------------------------------------------------------------------------
-
-  class SemaphoreImpl;
-
-  class Semaphore
+  class SemaphoreImpl
   {
    public:
-    explicit Semaphore(std::shared_ptr<SemaphoreImpl> pimpl) : pimpl_(std::move(pimpl))
+    explicit SemaphoreImpl(vk::Semaphore vkSemaphore) : vkSemaphore_(vkSemaphore)
     {
     }
 
-    [[nodiscard]] std::shared_ptr<SemaphoreImpl> getImpl() const
+    [[nodiscard]] vk::Semaphore getVkSemaphore() const
     {
-      return pimpl_;
+      return vkSemaphore_;
     }
 
    private:
-    std::shared_ptr<SemaphoreImpl> pimpl_;
+    vk::Semaphore vkSemaphore_;
   };
 
 }  // namespace vulkan

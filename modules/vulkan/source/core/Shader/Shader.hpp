@@ -1,30 +1,43 @@
 #pragma once
 #include "../Device/Device.hpp"
+#include "Shader.hpp"
 
 namespace vulkan
 {
-  // utils ------------------------------------------------------------------------------------------------------------
+  // ShaderImpl -------------------------------------------------------------------------------------------------------
 
-  enum class ShaderStage
-  {
-    Vertex,
-    Fragment,
-  };
-
-  // Shader -----------------------------------------------------------------------------------------------------------
-
-  class ShaderImpl;
-
-  class Shader
+  class ShaderImpl
   {
    public:
-    Shader(Device const& device, ShaderStage stage, std::vector<std::string> const& code,
-        std::string const& entryPoint = "main");
+    ShaderImpl(std::shared_ptr<DeviceImpl> device, ShaderCreateFlags createFlags);
 
-    Shader(Device const& device, std::filesystem::path const& path, std::string const& entryPoint = "main");
+    ShaderImpl(ShaderImpl const&) = delete;
+
+    ShaderImpl(ShaderImpl&&) = delete;
+
+    ShaderImpl& operator=(ShaderImpl const&) = delete;
+
+    ShaderImpl& operator=(ShaderImpl&&) = delete;
+
+    ~ShaderImpl();
+
+    [[nodiscard]] std::shared_ptr<DeviceImpl> const& getDevice() const
+    {
+      return device_;
+    }
+
+    [[nodiscard]] vk::ShaderModule getVkShaderModule() const
+    {
+      return vkShaderModule_;
+    }
+
+    void load(std::filesystem::path const& path);
+
+    void load(ShaderType type, std::vector<std::string> const& code);
 
    private:
-    std::shared_ptr<ShaderImpl> pimpl_;
+    std::shared_ptr<DeviceImpl> device_;
+    vk::ShaderModule vkShaderModule_;
   };
 
 }  // namespace vulkan

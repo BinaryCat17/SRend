@@ -31,6 +31,14 @@ namespace vulkan
     explicit BufferManager(vk::Device device, vk::BufferUsageFlags const& usage, VezMemoryFlags memoryType,
         utils::SizeT blockSize, utils::allocator::Allocator allocator);
 
+    BufferManager(BufferManager const& BufferManager) = delete;
+
+    BufferManager(BufferManager&& BufferManager) = default;
+
+    BufferManager& operator=(BufferManager const& BufferManager) = delete;
+
+    BufferManager& operator=(BufferManager&& BufferManager) = default;
+
     std::pair<vk::Buffer, utils::allocator::Allocation> allocate(utils::SizeT size, utils::AlignmentT alignment)
     {
       for (auto& block : bufferBlocks_)

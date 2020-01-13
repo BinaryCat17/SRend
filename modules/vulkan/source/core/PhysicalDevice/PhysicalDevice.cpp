@@ -1,17 +1,12 @@
-#include "PhysicalDeviceImpl.hpp"
+#include "PhysicalDevice.hpp"
 
 namespace vulkan
 {
-  // PhysicalDevice ---------------------------------------------------------------------------------------------------
+  // PhysicalDeviceImpl -----------------------------------------------------------------------------------------------
 
-  std::string PhysicalDevice::name() const
+  PhysicalDeviceType PhysicalDeviceImpl::type() const
   {
-    return pimpl_->getVkPhysicalDevice().getProperties().deviceName;
-  }
-
-  PhysicalDeviceType PhysicalDevice::type() const
-  {
-    switch (pimpl_->getVkPhysicalDevice().getProperties().deviceType)
+    switch (vkPhysicalDevice_.getProperties().deviceType)
     {
       case vk::PhysicalDeviceType::eOther:
         return PhysicalDeviceType::Other;
@@ -24,6 +19,19 @@ namespace vulkan
       case vk::PhysicalDeviceType::eCpu:
         return PhysicalDeviceType::Cpu;
     }
+    throw std::runtime_error("undefined device type");
+  }
+
+  // PhysicalDevice ---------------------------------------------------------------------------------------------------
+
+  std::string PhysicalDevice::name() const
+  {
+    return pimpl_->name();
+  }
+
+  PhysicalDeviceType PhysicalDevice::type() const
+  {
+    return pimpl_->type();
   }
 
 }  // namespace vulkan

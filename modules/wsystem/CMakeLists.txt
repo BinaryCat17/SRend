@@ -4,10 +4,9 @@ add_library(${PROJECT_NAME}
         source/Manager/Manager.cpp
         source/Window/Window.cpp
         source/Window/WindowImpl.cpp
-        source/vulkan/vulkan.cpp
         source/sdl/SDLManager.cpp
         source/sdl/SdlWindow.cpp
-        source/sdl/SdlVulkan.cpp
+        source/vulkan/vulkan.cpp
         )
 
 target_include_directories(${PROJECT_NAME}

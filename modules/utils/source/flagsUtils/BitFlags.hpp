@@ -20,11 +20,6 @@ namespace utils
     {
     }
 
-    BitFlags &operator=(BitFlags const &rhs)
-    {
-      mask_ = rhs.mask_;
-      return *this;
-    }
 
     BitFlags &operator|=(BitFlags const &rhs) noexcept
     {

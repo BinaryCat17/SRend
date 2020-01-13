@@ -1,24 +1,46 @@
+#include "Shader.hpp"
 #include <regex>
-#include "ShaderImpl.hpp"
 
 namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
-  ShaderStage pickStageFromStr(std::string const& fileFormat)
+  vk::ShaderStageFlagBits toVkShaderStage(ShaderType type)
+  {
+    return static_cast<vk::ShaderStageFlagBits>(type);
+  }
+
+  vk::ShaderModule createVkShaderModule(
+      std::shared_ptr<DeviceImpl> const& device, ShaderType type, std::vector<std::string> const& code)
+  {
+    std::string strCode = utils::strVecToStr(code);
+
+    VezShaderModuleCreateInfo moduleCreateInfo = {};
+    moduleCreateInfo.stage = static_cast<VkShaderStageFlagBits>(toVkShaderStage(type));
+    moduleCreateInfo.pCode = reinterpret_cast<uint32_t const*>(strCode.data());
+    moduleCreateInfo.codeSize = strCode.size();
+    moduleCreateInfo.pEntryPoint = "main";
+
+    VkShaderModule result = nullptr;
+    checkResult(
+        vezCreateShaderModule(device->getVkDevice(), &moduleCreateInfo, reinterpret_cast<VkShaderModule*>(&result)));
+    return result;
+  }
+
+  ShaderType pickTypeFromStr(std::string const& fileFormat)
   {
     if (fileFormat == "vert")
     {
-      return ShaderStage::Vertex;
+      return ShaderType::Vertex;
     }
     if (fileFormat == "frag")
     {
-      return ShaderStage::Fragment;
+      return ShaderType::Fragment;
     }
     throw std::runtime_error("invalid Shader file format");
   }
 
-  ShaderStage pickShaderStage(std::filesystem::path const& path)
+  ShaderType pickShaderType(std::filesystem::path const& path)
   {
     std::regex regex("([[:alpha:]]+)(.)(vert|frag)");
     std::string filename = path.filename().string();
@@ -26,22 +48,42 @@ namespace vulkan
 
     if (std::regex_search(filename, result, regex))
     {
-      return pickStageFromStr(result[3].str());
+      return pickTypeFromStr(result[3].str());
     }
     throw std::runtime_error("specified defective path to Shader");
   }
 
-  // Shader -----------------------------------------------------------------------------------------------------------
+  // ShaderImpl -------------------------------------------------------------------------------------------------------
 
-  Shader::Shader(
-      Device const& device, ShaderStage stage, std::vector<std::string> const& code, std::string const& entryPoint)
-      : pimpl_(std::make_shared<ShaderImpl>(device, stage, code, entryPoint))
+  ShaderImpl::ShaderImpl(std::shared_ptr<DeviceImpl> device, ShaderCreateFlags) : device_(std::move(device))
   {
   }
 
-  Shader::Shader(Device const& device, std::filesystem::path const& path, std::string const& entryPoint)
-      : Shader(device, pickShaderStage(path), utils::readFileToStringVec(path), entryPoint)
+  ShaderImpl::~ShaderImpl()
   {
+    vezDestroyShaderModule(device_->getVkDevice(), vkShaderModule_);
+  }
+
+  void ShaderImpl::load(std::filesystem::path const& path)
+  {
+    vkShaderModule_ = createVkShaderModule(device_, pickShaderType(path), utils::readFileToStringVec(path));
+  }
+
+  void ShaderImpl::load(ShaderType type, std::vector<std::string> const& code)
+  {
+    vkShaderModule_ = createVkShaderModule(device_, type, code);
+  }
+
+  // Shader -----------------------------------------------------------------------------------------------------------
+
+  void Shader::load(std::filesystem::path const& path)
+  {
+    pimpl_->load(path);
+  }
+
+  void Shader::load(ShaderType type, std::vector<std::string> const& code)
+  {
+    pimpl_->load(type, code);
   }
 
 }  // namespace vulkan

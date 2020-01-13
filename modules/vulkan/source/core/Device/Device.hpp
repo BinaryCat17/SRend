@@ -1,37 +1,69 @@
 #pragma once
 #include "../Application/Application.hpp"
+#include "BufferManager.hpp"
 
 namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
-  // clang-format off
+  struct DeviceQueues
+  {
+    vk::Queue graphicQueue;
+    vk::Queue computeQueue;
+    vk::Queue transferQueue;
+  };
 
-  SR_MAKE_BIT_FLAGS(DeviceCreate, {};)
+  struct DeviceBuffers
+  {
+    BufferManager deviceLocalManager;
+    BufferManager hostLocalManager;
+    BufferManager hostToDeviceManager;
+    BufferManager deviceToHostManager;
+    BufferManager stagingManager;
+  };
 
-  // clang-format on
+  VezMemoryFlags toVkMemoryFlags(MemoryType type);
 
-  // Device -----------------------------------------------------------------------------------------------------------
+  // DeviceImpl -------------------------------------------------------------------------------------------------------
 
-  class DeviceImpl;
-
-  class Device
+  class DeviceImpl
   {
    public:
-    explicit Device(std::shared_ptr<DeviceImpl> pimpl) : pimpl_(std::move(pimpl))
+    explicit DeviceImpl(std::shared_ptr<ApplicationImpl> const& application, DeviceCreateFlags const& createFlags,
+        PhysicalDevice const& physicalDevice);
+
+    ~DeviceImpl();
+
+    DeviceImpl(DeviceImpl const&) = delete;
+
+    DeviceImpl(DeviceImpl&&) = delete;
+
+    DeviceImpl& operator=(DeviceImpl const&) = delete;
+
+    DeviceImpl& operator=(DeviceImpl&&) = delete;
+
+    [[nodiscard]] vk::Device getVkDevice() const
     {
+      return vkDevice_;
     }
 
-    [[nodiscard]] std::shared_ptr<DeviceImpl> const& getImpl() const
+    [[nodiscard]] DeviceQueues& getQueues()
     {
-      return pimpl_;
+      return queues_;
     }
 
-    explicit Device(
-        Application const& application, DeviceCreateFlags const& createFlags, PhysicalDevice const& physicalDevice);
+    [[nodiscard]] DeviceBuffers& getBuffers()
+    {
+      return buffers_;
+    }
+
+    // interface
 
    private:
-    std::shared_ptr<DeviceImpl> pimpl_;
+    std::shared_ptr<ApplicationImpl> application_;
+    vk::Device vkDevice_;
+    DeviceQueues queues_;
+    DeviceBuffers buffers_;
   };
 
 }  // namespace vulkan

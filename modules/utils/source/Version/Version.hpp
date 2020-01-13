@@ -81,8 +81,9 @@ namespace utils
    public:
     BasicVersionList() = default;
 
-    BasicVersionList(std::initializer_list<T> il)
-        : vec_(il.begin(), il.end()), str_(Traits::toUint(vec_)), uint_(Traits::toString(vec_))
+    template <typename... Types>
+    BasicVersionList(Types... args)
+        : vec_(std::initializer_list<T>({args...})), uint_(Traits::toUint(vec_)), str_(Traits::toString(vec_))
     {
     }
 
@@ -109,8 +110,8 @@ namespace utils
 
    private:
     std::vector<T> vec_;
-    std::string str_;
     unsigned uint_ = 0;
+    std::string str_;
   };
 
   using VersionList = BasicVersionList<unsigned>;

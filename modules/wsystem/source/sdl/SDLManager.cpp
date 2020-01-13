@@ -1,7 +1,7 @@
 #include "SdlManager.hpp"
 #include <SDL.h>
 #include <map>
-#include "SdlVulkan.hpp"
+#include "SDL_vulkan.h"
 #include "SdlWindow.hpp"
 
 namespace wsystem
@@ -116,9 +116,34 @@ namespace wsystem
     SdlGlobalState::removeWindow(std::dynamic_pointer_cast<SdlWindow>(window));
   }
 
-  std::shared_ptr<managerExtensions::VulkanImpl> SdlManager::extensionVulkan() const
+  std::vector<char const*> SdlManager::getInstanceExtensions() const
   {
-    return std::make_shared<managerExtensions::SdlVulkan>();
+    unsigned count = 0;
+
+    std::unique_ptr<SDL_Window, decltype(SDL_DestroyWindow)*> window(
+        SDL_CreateWindow("test", 0, 0, 300, 300, SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN), &SDL_DestroyWindow);
+
+    if (!SDL_Vulkan_GetInstanceExtensions(window.get(), &count, nullptr))
+    {
+      throw std::runtime_error(SDL_GetError());
+    }
+    std::vector<char const*> extensions(count);
+    if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &count, extensions.data()))
+    {
+      throw std::runtime_error(SDL_GetError());
+    }
+    return extensions;
+  }
+
+  VkSurfaceKHR SdlManager::createSurface(std::shared_ptr<BaseWindow> const& window, VkInstance instance) const
+  {
+    VkSurfaceKHR result;
+    if (!SDL_Vulkan_CreateSurface(
+            std::dynamic_pointer_cast<SdlWindow>(window)->getSdlWindow().get(), instance, &result))
+    {
+      throw std::runtime_error(SDL_GetError());
+    }
+    return result;
   }
 
 }  // namespace wsystem

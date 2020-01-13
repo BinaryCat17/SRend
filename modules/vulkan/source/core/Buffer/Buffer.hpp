@@ -1,58 +1,52 @@
-#pragma once
+#include <utils/allocator.hpp>
 #include "../Device/Device.hpp"
 
 namespace vulkan
 {
-  // utils ------------------------------------------------------------------------------------------------------------
+  // BufferImpl -------------------------------------------------------------------------------------------------------
 
-  // clang-format off
-
-  SR_MAKE_BIT_FLAGS(BufferCreate, {};)
-
-  // clang-format on
-
-  // Buffer -----------------------------------------------------------------------------------------------------------
-
-  class Buffer
+  class BufferImpl
   {
    public:
-    virtual ~Buffer() = default;
+    BufferImpl(std::shared_ptr<DeviceImpl> device, BufferCreateFlags const& createFlags, MemoryType memoryType,
+        BufferUsageFlags const& usage, utils::SizeT size, utils::AlignmentT alignment);
 
-    [[nodiscard]] virtual utils::SizeT size() const = 0;
+    BufferImpl(BufferImpl const&) = delete;
+
+    BufferImpl(BufferImpl&&) = delete;
+
+    BufferImpl& operator=(BufferImpl const&) = delete;
+
+    BufferImpl& operator=(BufferImpl&&) = delete;
+
+    [[nodiscard]] std::shared_ptr<DeviceImpl> const& getDevice() const
+    {
+      return device_;
+    }
+
+    [[nodiscard]] vk::Buffer getVkBuffer() const
+    {
+      return vkBuffer_;
+    }
+
+    [[nodiscard]] utils::OffsetT offset() const
+    {
+      return allocation_.offset();
+    }
+
+    [[nodiscard]] utils::SizeT size() const
+    {
+      return allocation_.size();
+    }
+
+    [[nodiscard]] void* mapMemory(utils::SizeT size, utils::OffsetT offset = 0);
+
+    void unmapMemory();
+
+   private:
+    std::shared_ptr<DeviceImpl> device_;
+    vk::Buffer vkBuffer_;
+    utils::allocator::Allocation allocation_;
   };
-
-  // DeviceLocalBuffer ------------------------------------------------------------------------------------------------
-
-  class DeviceLocalBuffer : public virtual Buffer
-  {
-   public:
-  };
-
-  std::shared_ptr<DeviceLocalBuffer> createDeviceLocalBuffer(
-      Device const& device, BufferCreateFlags const& createFlags, utils::SizeT size, utils::AlignmentT alignment);
-
-  // HostLocalBuffer --------------------------------------------------------------------------------------------------
-
-  class HostLocalBuffer : public virtual Buffer
-  {
-   public:
-    virtual void memCopy(void const* pData, utils::SizeT size, utils::OffsetT offset) = 0;
-  };
-
-  std::shared_ptr<HostLocalBuffer> createHostLocalBuffer(
-      Device const& device, BufferCreateFlags const& createFlags, utils::SizeT size, utils::AlignmentT alignment);
-
-  std::shared_ptr<HostLocalBuffer> createStagingBuffer(
-      Device const& device, BufferCreateFlags const& createFlags, utils::SizeT size, utils::AlignmentT alignment);
-
-  // DeviceVisibleBuffer ----------------------------------------------------------------------------------------------
-
-  class DeviceVisibleBuffer : public HostLocalBuffer, public DeviceLocalBuffer
-  {
-   public:
-  };
-
-  std::shared_ptr<DeviceVisibleBuffer> createDeviceVisibleBuffer(
-      Device const& device, BufferCreateFlags const& createFlags, utils::SizeT size, utils::AlignmentT alignment);
 
 }  // namespace vulkan
