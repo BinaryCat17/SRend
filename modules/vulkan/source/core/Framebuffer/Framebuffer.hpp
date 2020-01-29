@@ -8,8 +8,7 @@ namespace vulkan
   class FramebufferImpl
   {
    public:
-    explicit FramebufferImpl(std::shared_ptr<DeviceImpl> device, FramebufferCreateFlags const& createFlags,
-        std::vector<Image> const& images);
+    explicit FramebufferImpl(std::shared_ptr<DeviceImpl> device, FramebufferCreateFlags const& createFlags);
 
     FramebufferImpl(FramebufferImpl const&) = delete;
 
@@ -29,8 +28,21 @@ namespace vulkan
       return vkFramebuffer_;
     }
 
+    void addAttachment(Image const& image);
+
+    void setAttachment(utils::IndexT index, Image const& image);
+
+    void removeAttachment(utils::IndexT index)
+    {
+      images_.erase(images_.begin() + index);
+    }
+
+    void update();
+
    private:
     std::shared_ptr<DeviceImpl> device_;
-    VezFramebuffer vkFramebuffer_;
+    std::vector<Image> images_;
+    VezFramebuffer vkFramebuffer_ = nullptr;
+    bool needUpdate_ = true;
   };
 }  // namespace vulkan

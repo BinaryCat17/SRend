@@ -25,46 +25,56 @@ namespace vulkan
       return multisampleState_;
     }
 
-    void setRasterizationSamples(SampleCountFlagBits sampleCount)
+    void setRasterizationSamples(SampleCountFlagBits val) noexcept
     {
-      multisampleState_.rasterizationSamples = static_cast<VkSampleCountFlagBits>(toVkSampleCount(sampleCount));
+      multisampleState_.rasterizationSamples = toVkSampleCount(val);
     }
 
-    void enableSampleShading(float minSampleShading)
+    void setSampleShading(std::optional<float> val) noexcept
     {
-      multisampleState_.sampleShadingEnable = true;
-      multisampleState_.minSampleShading = minSampleShading;
+      multisampleState_.sampleShadingEnable = val.has_value();
+      multisampleState_.minSampleShading = val.has_value() ? *val : 0;
     }
 
-    void disableSampleShading()
+    void setSampleMask(uint32_t val) noexcept
     {
-      multisampleState_.sampleShadingEnable = false;
-    }
-
-    void setSampleMask(uint32_t mask)
-    {
-      sampleMask_ = mask;
+      sampleMask_ = val;
       multisampleState_.pSampleMask = &sampleMask_;
     }
 
-    void enableAlphaToCoverage()
+    void setAlphaToCoverage(bool val) noexcept
     {
-      multisampleState_.alphaToCoverageEnable = true;
+      multisampleState_.alphaToCoverageEnable = val;
     }
 
-    void disableAlphaToCoverage()
+    void setAlphaToOne(bool val) noexcept
     {
-      multisampleState_.alphaToCoverageEnable = false;
+      multisampleState_.alphaToOneEnable = val;
     }
 
-    void enableAlphaToOne()
+    [[nodiscard]] SampleCountFlagBits getRasterizationSamples() const noexcept
     {
-      multisampleState_.alphaToOneEnable = true;
+      return static_cast<SampleCountFlagBits>(multisampleState_.rasterizationSamples);
     }
 
-    void disableAlphaToOne()
+    [[nodiscard]] std::optional<float> getSampleShading() const noexcept
     {
-      multisampleState_.alphaToOneEnable = false;
+      return multisampleState_.sampleShadingEnable ? multisampleState_.minSampleShading : std::optional<float>();
+    }
+
+    [[nodiscard]] uint32_t getSampleMask() const noexcept
+    {
+      return sampleMask_;
+    }
+
+    [[nodiscard]] bool getAlphaToCoverage() const noexcept
+    {
+      return multisampleState_.alphaToCoverageEnable;
+    }
+
+    [[nodiscard]] bool getAlphaToOne() const noexcept
+    {
+      return multisampleState_.alphaToOneEnable;
     }
 
    private:

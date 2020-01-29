@@ -25,24 +25,29 @@ namespace vulkan
       return state_;
     }
 
-    void enableLogicOp(LogicOp op)
+    void setLogicOp(std::optional<LogicOp> op) noexcept
     {
-      state_.logicOpEnable = true;
-      state_.logicOp = static_cast<VkLogicOp>(toVkLogicOp(op));
+      state_.logicOpEnable = op.has_value();
+      state_.logicOp = op.has_value() ? toVkLogicOp(*op) : VK_LOGIC_OP_AND;
     }
 
-    void disableLogicOp()
+    [[nodiscard]] std::optional<LogicOp> getLogicOp() const noexcept
     {
-      state_.logicOpEnable = false;
+      return state_.logicOpEnable ? static_cast<LogicOp>(state_.logicOp) : std::optional<LogicOp>();
     }
 
-    void addColorBlendAttachment(
-        std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask);
+    void addAttachment(std::optional<ColorBlendAttachment> const& attachment,
+        ColorComponentFlags colorWriteMask = ColorComponentFlagBits::R | ColorComponentFlagBits::G |
+                                             ColorComponentFlagBits::B | ColorComponentFlagBits::A);
 
-    void setColorBlendAttachment(
-        utils::IndexT index, std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask);
+    void setAttachment(utils::IndexT index, std::optional<ColorBlendAttachment> const& attachment,
+        ColorComponentFlags colorWriteMask = ColorComponentFlagBits::R | ColorComponentFlagBits::G |
+                                             ColorComponentFlagBits::B | ColorComponentFlagBits::A);
 
-    void removeColorBlendAttachment(utils::IndexT index);
+    void removeAttachment(utils::IndexT index)
+    {
+      states_.erase(states_.begin() + index);
+    }
 
     void update();
 

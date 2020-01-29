@@ -4,33 +4,6 @@ namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
-  vk::BorderColor toVkBorderColor(BorderColor color)
-  {
-    return static_cast<vk::BorderColor>(color);
-  }
-
-  vk::SamplerAddressMode toVkAddressMode(SamplerAddressMode mode)
-  {
-    return static_cast<vk::SamplerAddressMode>(mode);
-  }
-
-  vk::Filter toVkFilter(Filter filter)
-  {
-    return static_cast<vk::Filter>(filter);
-  }
-
-  vk::SamplerMipmapMode toVkMipMapMode(SamplerMipMapMode mode)
-  {
-    switch (mode)
-    {
-      case SamplerMipMapMode::Nearest:
-        return vk::SamplerMipmapMode::eNearest;
-      case SamplerMipMapMode::Linear:
-        return vk::SamplerMipmapMode::eLinear;
-    }
-    throw std::runtime_error("undefined sampler mip map mode");
-  }
-
   // SamplerImpl ------------------------------------------------------------------------------------------------------
 
   SamplerImpl::SamplerImpl(std::shared_ptr<DeviceImpl> device, SamplerCreateFlags) : device_(std::move(device))
@@ -48,26 +21,26 @@ namespace vulkan
     {
       VezSamplerCreateInfo createInfo = {};
       createInfo.unnormalizedCoordinates = unnormalizedCoordinates_;
-      createInfo.borderColor = static_cast<VkBorderColor>(toVkBorderColor(borderColor_));
+      createInfo.borderColor = toVkBorderColor(borderColor_);
       createInfo.compareEnable = compareOp_.has_value();
       if (compareOp_.has_value())
       {
-        createInfo.compareOp = static_cast<VkCompareOp>(toVkCompareOp(*compareOp_));
+        createInfo.compareOp = toVkCompareOp(*compareOp_);
       }
       createInfo.anisotropyEnable = anisotropy_.has_value();
       if (anisotropy_.has_value())
       {
         createInfo.maxAnisotropy = (*anisotropy_);
       }
-      createInfo.addressModeU = static_cast<VkSamplerAddressMode>(toVkAddressMode(addressModeU_));
-      createInfo.addressModeV = static_cast<VkSamplerAddressMode>(toVkAddressMode(addressModeV_));
-      createInfo.addressModeW = static_cast<VkSamplerAddressMode>(toVkAddressMode(addressModeW_));
-      createInfo.magFilter = static_cast<VkFilter>(toVkFilter(magFilter_));
-      createInfo.minFilter = static_cast<VkFilter>(toVkFilter(minFilter_));
+      createInfo.addressModeU = toVkAddressMode(addressModeU_);
+      createInfo.addressModeV = toVkAddressMode(addressModeV_);
+      createInfo.addressModeW = toVkAddressMode(addressModeW_);
+      createInfo.magFilter = toVkFilter(magFilter_);
+      createInfo.minFilter = toVkFilter(minFilter_);
       createInfo.minLod = minLod_;
       createInfo.mipLodBias = mipLodBias_;
       createInfo.maxLod = maxLod_;
-      createInfo.mipmapMode = static_cast<VkSamplerMipmapMode>(toVkMipMapMode(mipMapMode_));
+      createInfo.mipmapMode = toVkMipMapMode(mipMapMode_);
 
       VkSampler result = nullptr;
       checkResult(vezCreateSampler(device_->getVkDevice(), &createInfo, &result));
@@ -78,84 +51,139 @@ namespace vulkan
 
   // Sampler ----------------------------------------------------------------------------------------------------------
 
-  void Sampler::setMagFilter(Filter const& val)
+  Sampler::Sampler(Device const& device, SamplerCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<SamplerImpl>(device.getImpl(), createFlags))
+  {
+  }
+
+  void Sampler::setMagFilter(Filter const& val) noexcept
   {
     pimpl_->setMagFilter(val);
   }
 
-  void Sampler::setMinFilter(Filter const& val)
+  void Sampler::setMinFilter(Filter const& val) noexcept
   {
     pimpl_->setMinFilter(val);
   }
 
-  void Sampler::setMipMapMode(SamplerMipMapMode const& val)
+  void Sampler::setMipMapMode(MipMapMode const& val) noexcept
   {
     pimpl_->setMipMapMode(val);
   }
 
-  void Sampler::setAddressModeU(SamplerAddressMode const& val)
+  void Sampler::setAddressModeU(AddressMode const& val) noexcept
   {
     pimpl_->setAddressModeU(val);
   }
 
-  void Sampler::setAddressModeV(SamplerAddressMode const& val)
+  void Sampler::setAddressModeV(AddressMode const& val) noexcept
   {
     pimpl_->setAddressModeV(val);
   }
 
-  void Sampler::setAddressModeW(SamplerAddressMode const& val)
+  void Sampler::setAddressModeW(AddressMode const& val) noexcept
   {
     pimpl_->setAddressModeW(val);
   }
 
-  void Sampler::setMipLodBias(float val)
+  void Sampler::setMipLodBias(float val) noexcept
   {
     pimpl_->setMipLodBias(val);
   }
 
-  void Sampler::enableAnisotropy(float val)
+  void Sampler::setAnisotropy(std::optional<float> val) noexcept
   {
-    pimpl_->enableAnisotropy(val);
+    pimpl_->setAnisotropy(val);
   }
 
-  void Sampler::disableAnisotropy()
+  void Sampler::setCompareOp(std::optional<CompareOp> val) noexcept
   {
-    pimpl_->disableAnisotropy();
+    pimpl_->setCompareOp(val);
   }
 
-  void Sampler::enableCompareOp(CompareOp val)
-  {
-    pimpl_->enableCompareOp(val);
-  }
-
-  void Sampler::disableCompareOp()
-  {
-    pimpl_->disableCompareOp();
-  }
-
-  void Sampler::setMinLod(float val)
+  void Sampler::setMinLod(float val) noexcept
   {
     pimpl_->setMinLod(val);
   }
 
-  void Sampler::setMaxLod(float val)
+  void Sampler::setMaxLod(float val) noexcept
   {
     pimpl_->setMaxLod(val);
   }
 
-  void Sampler::setBorderColor(BorderColor val)
+  void Sampler::setBorderColor(BorderColor val) noexcept
   {
     pimpl_->setBorderColor(val);
   }
 
-  void Sampler::enableUnnormalizedCoordinates()
+  void Sampler::setUnnormalizedCoordinates(bool enable) noexcept
   {
-    pimpl_->enableUnnormalizedCoordinates();
+    pimpl_->setUnnormalizedCoordinates(enable);
   }
 
-  void Sampler::disableUnnormalizedCoordinates()
+  Filter Sampler::getMagFilter() const noexcept
   {
-    pimpl_->disableUnnormalizedCoordinates();
+    return pimpl_->getMagFilter();
+  }
+
+  Filter Sampler::getMinFilter() const noexcept
+  {
+    return pimpl_->getMagFilter();
+  }
+
+  MipMapMode Sampler::getMipMapMode() const noexcept
+  {
+    return pimpl_->getMipMapMode();
+  }
+
+  AddressMode Sampler::getAddressModeU() const noexcept
+  {
+    return pimpl_->getAddressModeU();
+  }
+
+  AddressMode Sampler::getAddressModeV() const noexcept
+  {
+    return pimpl_->getAddressModeV();
+  }
+
+  AddressMode Sampler::getAddressModeW() const noexcept
+  {
+    return pimpl_->getAddressModeW();
+  }
+
+  float Sampler::getMipLodBias() const noexcept
+  {
+    return pimpl_->getMipLodBias();
+  }
+
+  std::optional<float> Sampler::getAnisotropy() const noexcept
+  {
+    return pimpl_->getAnisotropy();
+  }
+
+  std::optional<CompareOp> Sampler::getCompareOp() const noexcept
+  {
+    return pimpl_->getCompareOp();
+  }
+
+  float Sampler::getMinLod() const noexcept
+  {
+    return pimpl_->getMinLod();
+  }
+
+  float Sampler::getMaxLod() const noexcept
+  {
+    return pimpl_->getMaxLod();
+  }
+
+  BorderColor Sampler::getBorderColor() const noexcept
+  {
+    return pimpl_->getBorderColor();
+  }
+
+  bool Sampler::getUnnormalizedCoordinates() const noexcept
+  {
+    return pimpl_->getUnnormalizedCoordinates();
   }
 
 }  // namespace vulkan

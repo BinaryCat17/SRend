@@ -17,39 +17,47 @@ namespace utils::allocator
 
   bool canEmplace(std::pair<SizeT const, AllocInfo> const &alloc, SizeT size, OffsetT offset)
   {
-    if (alloc.second.is_empty)
-    {
-      if (alloc.first >= size + offset)
-      {
-        return true;
-      }
-    }
-    return false;
+    return alloc.second.is_empty && alloc.first >= size + offset;
   }
 
-  OffsetT addAllocation(std::map<SizeT, AllocInfo> &allocations, SizeT &currentSize, SizeT size, AlignmentT alignment)
+  OffsetT addAllocation(
+      std::multimap<SizeT, AllocInfo> &allocations, SizeT &maxSize, SizeT size, AlignmentT alignment)
   {
-    OffsetT alignedOffset = currentSize + offsetForAline(currentSize, alignment);
+    OffsetT alignedOffset = maxSize + offsetForAline(maxSize, alignment);
     allocations.emplace(size, AllocInfo{alignedOffset, false});
-    currentSize = size + alignedOffset;
+    maxSize = size + alignedOffset;
     return alignedOffset;
   }
 
-  // DefaultAllocPolicy -----------------------------------------------------------------------------------------------
+  // DefaultAllocPolicy  -----------------------------------------------------------------------------------------------
 
   OffsetT DefaultAllocPolicy::allocate(SizeT size, AlignmentT alignment)
   {
-    for (auto &allocation : allocations_)
+    assert(size != 0 && "size cannot be equal to 0");
+
+    // find empty slot that can contain allocation
+    for (auto allocIter = allocations_.begin(); allocIter != allocations_.end(); ++allocIter)
     {
-      OffsetT offset = offsetForAline(size, alignment);
-      if (canEmplace(allocation, size, offset))
+      OffsetT additionalOffset = offsetForAline(size, alignment);
+      // if found, replace it
+      if (canEmplace(*allocIter, size, additionalOffset))
       {
-        allocation.second.is_empty = false;
-        allocation.second.offset += offset;
-        return allocation.second.offset;
+        auto allocSize = allocIter->first - additionalOffset;
+        auto allocOffset = allocIter->second.offset + additionalOffset;
+
+        allocIter = allocations_.erase(allocIter);
+        allocations_.emplace(allocSize, AllocInfo{allocOffset, false});
+
+        // update current size if required
+        currentSize_ = std::max(allocOffset + allocSize, currentSize_);
+        maxSize_ = std::max(maxSize_, currentSize_);
+        return allocOffset;
       }
     }
-    return addAllocation(allocations_, current_size_, size, alignment);
+    // if not found, add new slot
+    auto allocOffset = addAllocation(allocations_, maxSize_, size, alignment);
+    currentSize_ = maxSize_;
+    return allocOffset;
   }
 
   void DefaultAllocPolicy::deallocate(OffsetT offset)
@@ -59,9 +67,9 @@ namespace utils::allocator
     assert(findIt != allocations_.cend());
     findIt->second.is_empty = true;
 
-    if (findIt == --allocations_.begin())
+    if (findIt->second.offset + findIt->first == currentSize_)
     {
-      current_size_ -= findIt->first;
+      currentSize_ -= findIt->first;
     }
   }
 
@@ -71,10 +79,11 @@ namespace utils::allocator
     {
       if (canEmplace(allocation, size, offsetForAline(size, alignment)))
       {
-        return 0;
+        auto maxAllocSize = allocation.first + allocation.second.offset;
+        return maxAllocSize <= currentSize_ ? 0 :  maxAllocSize - currentSize_;
       }
     }
-    return size + offsetForAline(current_size_, alignment);
+    return size + offsetForAline(maxSize_, alignment);
   }
 
 }  // namespace utils::allocator

@@ -4,23 +4,8 @@ namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
-  VkColorComponentFlags toVkColorComponentFlags(ColorComponentFlags flags)
-  {
-    return static_cast<VkColorComponentFlags>(flags);
-  }
-
-  VkBlendFactor toVkBlendFactor(BlendFactor val)
-  {
-    return static_cast<VkBlendFactor>(val);
-  }
-
-  VkBlendOp toVkBlendOp(BlendOp blendOp)
-  {
-    return static_cast<VkBlendOp>(blendOp);
-  }
-
   VezColorBlendAttachmentState createColorBlendAttachmentState(
-      std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask)
+      std::optional<ColorBlendAttachment> const& info, ColorComponentFlags colorWriteMask)
   {
     VezColorBlendAttachmentState state = {};
     state.colorWriteMask = toVkColorComponentFlags(colorWriteMask);
@@ -39,21 +24,16 @@ namespace vulkan
 
   // ColorBlendStateImpl ----------------------------------------------------------------------------------------------
 
-  void ColorBlendStateImpl::addColorBlendAttachment(
-      std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask)
+  void ColorBlendStateImpl::addAttachment(
+      std::optional<ColorBlendAttachment> const& attachment, ColorComponentFlags colorWriteMask)
   {
-    states_.push_back(createColorBlendAttachmentState(info, colorWriteMask));
+    states_.push_back(createColorBlendAttachmentState(attachment, colorWriteMask));
   }
 
-  void ColorBlendStateImpl::setColorBlendAttachment(
-      utils::IndexT index, std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask)
+  void ColorBlendStateImpl::setAttachment(
+      utils::IndexT index, std::optional<ColorBlendAttachment> const& attachment, ColorComponentFlags colorWriteMask)
   {
-    states_[index] = createColorBlendAttachmentState(info, colorWriteMask);
-  }
-
-  void ColorBlendStateImpl::removeColorBlendAttachment(utils::IndexT index)
-  {
-    states_.erase(states_.begin() + index);
+    states_[index] = createColorBlendAttachmentState(attachment, colorWriteMask);
   }
 
   void ColorBlendStateImpl::update()
@@ -68,21 +48,36 @@ namespace vulkan
 
   // ColorBlendState --------------------------------------------------------------------------------------------------
 
-  void ColorBlendState::addColorBlendAttachment(
-      std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask)
+  ColorBlendState::ColorBlendState(Device const& device, ColorBlendStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<ColorBlendStateImpl>(device.getImpl(), createFlags))
   {
-    pimpl_->addColorBlendAttachment(info, colorWriteMask);
   }
 
-  void ColorBlendState::setColorBlendAttachment(
-      utils::IndexT index, std::optional<ColorBlendAttachmentInfo> const& info, ColorComponentFlags colorWriteMask)
+  void ColorBlendState::addAttachment(
+      std::optional<ColorBlendAttachment> const& attachment, ColorComponentFlags colorWriteMask)
   {
-    pimpl_->setColorBlendAttachment(index, info, colorWriteMask);
+    pimpl_->addAttachment(attachment, colorWriteMask);
   }
 
-  void ColorBlendState::removeColorBlendAttachment(utils::IndexT index)
+  void ColorBlendState::setAttachment(
+      utils::IndexT index, std::optional<ColorBlendAttachment> const& attachment, ColorComponentFlags colorWriteMask)
   {
-    pimpl_->removeColorBlendAttachment(index);
+    pimpl_->setAttachment(index, attachment, colorWriteMask);
+  }
+
+  void ColorBlendState::removeAttachment(utils::IndexT index)
+  {
+    pimpl_->removeAttachment(index);
+  }
+
+  void ColorBlendState::setLogicOp(std::optional<LogicOp> val) noexcept
+  {
+    pimpl_->setLogicOp(val);
+  }
+
+  [[nodiscard]] std::optional<LogicOp> ColorBlendState::getLogicOp() const noexcept
+  {
+    return pimpl_->getLogicOp();
   }
 
 }  // namespace vulkan

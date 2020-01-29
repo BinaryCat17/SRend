@@ -25,41 +25,65 @@ namespace vulkan
       return rasterizationState_;
     }
 
-    void enableDepthClamp()
+    void setDepthClamp(bool val) noexcept
     {
-      rasterizationState_.depthClampEnable = true;
+      rasterizationState_.depthClampEnable = val;
     }
 
-    void disableDepthClamp()
+    void setRasterizerDiscard(bool val) noexcept
     {
-      rasterizationState_.depthClampEnable = false;
+      rasterizationState_.rasterizerDiscardEnable = val;
     }
 
-    void enableRasterizerDiscard()
+    void setDepthBias(bool val) noexcept
     {
-      rasterizationState_.rasterizerDiscardEnable = true;
+      rasterizationState_.depthBiasEnable = val;
     }
 
-    void disableRasterizerDiscard()
+    void setPolygonMode(PolygonMode mode)
     {
-      rasterizationState_.rasterizerDiscardEnable = false;
+      rasterizationState_.polygonMode = toVkPolygonMode(mode);
     }
 
-    void enableDepthBias()
+    void setCullMode(CullModeFlags const& cullMode)
     {
-      rasterizationState_.depthBiasEnable = true;
+      rasterizationState_.cullMode = toVkCullModeFlags(cullMode);
     }
 
-    void disableDepthBias()
+    void setFrontFace(FrontFace frontFace)
     {
-      rasterizationState_.depthBiasEnable = false;
+      rasterizationState_.frontFace = toVkFrontFace(frontFace);
     }
 
-    void setPolygonMode(PolygonMode mode);
+    [[nodiscard]] bool getDepthClamp() const noexcept
+    {
+      return rasterizationState_.depthClampEnable;
+    }
 
-    void setCullMode(CullModeFlags const& cullMode);
+    [[nodiscard]] bool getRasterizerDiscard() const noexcept
+    {
+      return rasterizationState_.rasterizerDiscardEnable;
+    }
 
-    void setFrontFace(FrontFace frontFace);
+    [[nodiscard]] bool getDepthBias() const noexcept
+    {
+      return rasterizationState_.depthBiasEnable;
+    }
+
+    [[nodiscard]] PolygonMode getPolygonMode() const noexcept
+    {
+      return static_cast<PolygonMode>(rasterizationState_.polygonMode);
+    }
+
+    [[nodiscard]] CullModeFlags getCullMode() const noexcept
+    {
+      return static_cast<CullModeFlags>(rasterizationState_.cullMode);
+    }
+
+    [[nodiscard]] FrontFace getFrontFace() const noexcept
+    {
+      return static_cast<FrontFace>(rasterizationState_.frontFace);
+    }
 
    private:
     VezRasterizationState rasterizationState_ = {};

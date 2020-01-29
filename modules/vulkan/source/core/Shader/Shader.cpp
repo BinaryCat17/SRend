@@ -11,46 +11,18 @@ namespace vulkan
   }
 
   vk::ShaderModule createVkShaderModule(
-      std::shared_ptr<DeviceImpl> const& device, ShaderType type, std::vector<std::string> const& code)
+      std::shared_ptr<DeviceImpl> const& device, ShaderType type, std::vector<char> const& code)
   {
-    std::string strCode = utils::strVecToStr(code);
-
     VezShaderModuleCreateInfo moduleCreateInfo = {};
     moduleCreateInfo.stage = static_cast<VkShaderStageFlagBits>(toVkShaderStage(type));
-    moduleCreateInfo.pCode = reinterpret_cast<uint32_t const*>(strCode.data());
-    moduleCreateInfo.codeSize = strCode.size();
+    moduleCreateInfo.pCode = reinterpret_cast<uint32_t const*>(code.data());
+    moduleCreateInfo.codeSize = code.size() * sizeof(char);
     moduleCreateInfo.pEntryPoint = "main";
 
     VkShaderModule result = nullptr;
     checkResult(
         vezCreateShaderModule(device->getVkDevice(), &moduleCreateInfo, reinterpret_cast<VkShaderModule*>(&result)));
     return result;
-  }
-
-  ShaderType pickTypeFromStr(std::string const& fileFormat)
-  {
-    if (fileFormat == "vert")
-    {
-      return ShaderType::Vertex;
-    }
-    if (fileFormat == "frag")
-    {
-      return ShaderType::Fragment;
-    }
-    throw std::runtime_error("invalid Shader file format");
-  }
-
-  ShaderType pickShaderType(std::filesystem::path const& path)
-  {
-    std::regex regex("([[:alpha:]]+)(.)(vert|frag)");
-    std::string filename = path.filename().string();
-    std::smatch result;
-
-    if (std::regex_search(filename, result, regex))
-    {
-      return pickTypeFromStr(result[3].str());
-    }
-    throw std::runtime_error("specified defective path to Shader");
   }
 
   // ShaderImpl -------------------------------------------------------------------------------------------------------
@@ -64,21 +36,27 @@ namespace vulkan
     vezDestroyShaderModule(device_->getVkDevice(), vkShaderModule_);
   }
 
-  void ShaderImpl::load(std::filesystem::path const& path)
+  void ShaderImpl::load(ShaderType type, std::filesystem::path const& path)
   {
-    vkShaderModule_ = createVkShaderModule(device_, pickShaderType(path), utils::readFileToStringVec(path));
+    vkShaderModule_ = createVkShaderModule(device_, type, utils::readBinaryFile(path));
   }
 
   void ShaderImpl::load(ShaderType type, std::vector<std::string> const& code)
   {
-    vkShaderModule_ = createVkShaderModule(device_, type, code);
+    std::string strCode = utils::stringVecToString(code);
+    vkShaderModule_ = createVkShaderModule(device_, type, std::vector<char>(strCode.cbegin(), strCode.cend()));
   }
 
   // Shader -----------------------------------------------------------------------------------------------------------
 
-  void Shader::load(std::filesystem::path const& path)
+  Shader::Shader(Device const& device, ShaderCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<ShaderImpl>(device.getImpl(), createFlags))
   {
-    pimpl_->load(path);
+  }
+
+  void Shader::load(ShaderType type, std::filesystem::path const& path)
+  {
+    pimpl_->load(type, path);
   }
 
   void Shader::load(ShaderType type, std::vector<std::string> const& code)

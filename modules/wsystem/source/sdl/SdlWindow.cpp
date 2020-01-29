@@ -1,4 +1,5 @@
 #include "SdlWindow.hpp"
+#include "SDL_vulkan.h"
 
 namespace wsystem
 {
@@ -152,6 +153,16 @@ namespace wsystem
   bool SdlWindow::isMoved() const
   {
     return isMoved_;
+  }
+
+  VkSurfaceKHR SdlWindow::createSurface(VkInstance instance) const
+  {
+    VkSurfaceKHR result;
+    if (!SDL_Vulkan_CreateSurface(window_.get(), instance, &result))
+    {
+      throw std::runtime_error(SDL_GetError());
+    }
+    return result;
   }
 
 }  // namespace wsystem

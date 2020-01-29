@@ -18,6 +18,11 @@ namespace wsystem
       return window_;
     }
 
+    [[nodiscard]] NativeHandle getNativeHandle() const override
+    {
+      return window_.get();
+    }
+
     // parameters
 
     void setSize(utils::Extent2D const& newSize) override;
@@ -58,6 +63,10 @@ namespace wsystem
     {
       isMoved_ = value;
     }
+
+    // vulkan
+
+    VkSurfaceKHR createSurface(VkInstance instance) const override;
 
    private:
     UniqueSdlWindow window_;

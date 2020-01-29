@@ -1,42 +1,62 @@
 #include "Buffer.hpp"
+#include "../PhysicalDevice/PhysicalDevice.hpp"
 
 namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
-  // BufferImpl -------------------------------------------------------------------------------------------------------
-
-  BufferImpl::BufferImpl(std::shared_ptr<DeviceImpl> device, BufferCreateFlags const&, MemoryType memoryType,
-      BufferUsageFlags const&, utils::SizeT size, utils::AlignmentT alignment)
-      : device_(std::move(device)), allocation_(nullptr)
+  vulkan::BufferManager& selectBufferManager(vulkan::DeviceImpl& device, MemoryType memoryType)
   {
-    std::pair<vk::Buffer, utils::allocator::Allocation> alloc(nullptr, nullptr);
+    auto& deviceBuffers = device.getBuffers();
 
     switch (memoryType)
     {
       case MemoryType::DeviceLocal:
-        alloc = device->getBuffers().deviceLocalManager.allocate(size, alignment);
-        break;
+        return deviceBuffers.deviceLocalManager;
       case MemoryType::HostLocal:
-        alloc = device->getBuffers().hostLocalManager.allocate(size, alignment);
-        break;
+        return deviceBuffers.hostToDeviceManager;
       case MemoryType::DeviceToHost:
-        alloc = device->getBuffers().deviceToHostManager.allocate(size, alignment);
-        break;
+        return deviceBuffers.deviceToHostManager;
       case MemoryType::HostToDivice:
-        alloc = device->getBuffers().hostToDeviceManager.allocate(size, alignment);
-        break;
+        return deviceBuffers.hostToDeviceManager;
     }
 
-    vkBuffer_ = alloc.first;
-    allocation_ = alloc.second;
+    throw std::runtime_error("undefined memory type");
+  }
+
+  utils::AlignmentT requiredAlignment(vulkan::DeviceImpl const& device, BufferUsageFlags const& usage)
+  {
+    utils::AlignmentT alignment = 0;
+    vk::PhysicalDeviceLimits limits = device.getPhysicalDevice()->getVkPhysicalDevice().getProperties().limits;
+
+    if (usage & vulkan::BufferUsageFlagBits::UniformBuffer)
+    {
+      alignment = limits.minUniformBufferOffsetAlignment;
+    }
+
+    if (usage & vulkan::BufferUsageFlagBits::VertexBuffer)
+    {
+      alignment = 8;
+    }
+
+    return alignment;
+  }
+
+  // BufferImpl -------------------------------------------------------------------------------------------------------
+
+  BufferImpl::BufferImpl(std::shared_ptr<DeviceImpl> device, BufferCreateFlags const&, MemoryType memoryType,
+      BufferUsageFlags const& usage, utils::SizeT size)
+      : device_(std::move(device)), allocation_(nullptr)
+  {
+    std::tie(vkBuffer_, allocation_) =
+        selectBufferManager(*device_, memoryType).allocate(size, requiredAlignment(*device_, usage));
   }
 
   void* BufferImpl::mapMemory(utils::SizeT size, utils::OffsetT offset)
   {
     void* pMappedData = nullptr;
-    vezMapBuffer(device_->getVkDevice(), vkBuffer_, offset, size, &pMappedData);
-    return pMappedData;
+    vezMapBuffer(device_->getVkDevice(), vkBuffer_, allocation_.offset() + offset, size, &pMappedData);
+    return reinterpret_cast<char*>(pMappedData) + allocation_.offset() + offset;
   }
 
   void BufferImpl::unmapMemory()
@@ -46,19 +66,37 @@ namespace vulkan
 
   // Buffer -----------------------------------------------------------------------------------------------------------
 
-  utils::SizeT Buffer::getSize() const
+  Buffer::Buffer(Device const& device, BufferCreateFlags const& createFlags, BufferUsageFlags const& usage,
+      utils::SizeT size, MemoryType memoryType)
+      : pimpl_(std::make_shared<BufferImpl>(device.getImpl(), createFlags, memoryType, usage, size))
+  {
+  }
+
+  utils::SizeT Buffer::getSize() const noexcept
   {
     return pimpl_->size();
   }
 
-  [[nodiscard]] void* Buffer::mapMemory(utils::SizeT size, utils::OffsetT offset)
+  [[nodiscard]] BufferMappedData Buffer::mapMemory(utils::SizeT size, utils::OffsetT offset)
   {
-    return pimpl_->mapMemory(size, offset);
+    return BufferMappedData(std::make_shared<BufferMappedDataImpl>(pimpl_, size, offset));
   }
 
-  void Buffer::unmapMemory()
+  // BufferMappedDataImpl ---------------------------------------------------------------------------------------------
+
+  [[nodiscard]] void* BufferMappedData::pData() noexcept
   {
-    pimpl_->unmapMemory();
+    return pimpl_->pData();
+  }
+
+  [[nodiscard]] void const* BufferMappedData::pData() const noexcept
+  {
+    return pimpl_->pData();
+  }
+
+  void BufferMappedData::unmap()
+  {
+    return pimpl_->unmap();
   }
 
 }  // namespace vulkan

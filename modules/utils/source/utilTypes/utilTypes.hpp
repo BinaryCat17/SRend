@@ -15,6 +15,11 @@ namespace utils
     {
     }
 
+    template <typename T1>
+    BasicExtent2D(BasicExtent2D<T1> const& rhs) : width_(rhs.width()), height_(rhs.height())
+    {
+    }
+
     T width() const
     {
       return width_;
@@ -102,6 +107,11 @@ namespace utils
     BasicExtent3D() = default;
 
     explicit BasicExtent3D(T width, T height, T depth) : width_(width), height_(height), depth_(depth)
+    {
+    }
+
+    explicit BasicExtent3D(BasicExtent2D<T> const &extent2D)
+        : width_(extent2D.width()), height_(extent2D.height()), depth_(1)
     {
     }
 
@@ -912,6 +922,12 @@ namespace utils
 
     explicit BasicViewport(T x, T y, T width, T height, T minDepth, T maxDepth)
         : position_(x, y), extent_(width, height), minDepth_(minDepth), maxDepth_(maxDepth)
+    {
+    }
+
+    template <typename  T1>
+    explicit BasicViewport(utils::BasicExtent2D<T1> const& extent)
+        : position_(0, 0), extent_(extent), minDepth_(0), maxDepth_(1)
     {
     }
 

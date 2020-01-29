@@ -25,24 +25,14 @@ namespace vulkan
       return vkDepthStencilState_;
     }
 
-    void enableDepthTest()
+    void setDepthTest(bool val) noexcept
     {
-      vkDepthStencilState_.depthTestEnable = true;
+      vkDepthStencilState_.depthTestEnable = val;
     }
 
-    void disableDepthTest()
+    void setDepthWrite(bool val) noexcept
     {
-      vkDepthStencilState_.depthTestEnable = false;
-    }
-
-    void enableDepthWrite()
-    {
-      vkDepthStencilState_.depthWriteEnable = true;
-    }
-
-    void disableDepthWrite()
-    {
-      vkDepthStencilState_.depthWriteEnable = false;
+      vkDepthStencilState_.depthWriteEnable = val;
     }
 
     void setDepthCompareOp(CompareOp op)
@@ -50,19 +40,50 @@ namespace vulkan
       vkDepthStencilState_.depthCompareOp = static_cast<VkCompareOp>(toVkCompareOp(op));
     }
 
-    void enableDepthBoundsTest()
+    void setDepthBoundsTest(bool val) noexcept
     {
-      vkDepthStencilState_.depthBoundsTestEnable = true;
-    }
-
-    void disableDepthBoundsTest()
-    {
-      vkDepthStencilState_.depthBoundsTestEnable = false;
+      vkDepthStencilState_.depthBoundsTestEnable = val;
     }
 
     void setBackStencilOp(StencilOpInfo const& state);
 
     void setFrontStencilOp(StencilOpInfo const& state);
+
+    [[nodiscard]] bool getDepthTest() const noexcept
+    {
+      return vkDepthStencilState_.depthTestEnable;
+    }
+
+    [[nodiscard]] bool getDepthWrite() const noexcept
+    {
+      return vkDepthStencilState_.depthWriteEnable;
+    }
+
+    [[nodiscard]] CompareOp getDepthCompareOp() const noexcept
+    {
+      return static_cast<CompareOp>(vkDepthStencilState_.depthCompareOp);
+    }
+
+    [[nodiscard]] bool getDepthBoundsTest() const noexcept
+    {
+      return vkDepthStencilState_.depthBoundsTestEnable;
+    }
+
+    [[nodiscard]] StencilOpInfo getBackStencilOp() const noexcept
+    {
+      return StencilOpInfo{static_cast<StencilOp>(vkDepthStencilState_.back.failOp),
+          static_cast<StencilOp>(vkDepthStencilState_.back.passOp),
+          static_cast<StencilOp>(vkDepthStencilState_.back.depthFailOp),
+          static_cast<CompareOp>(vkDepthStencilState_.back.compareOp)};
+    }
+
+    [[nodiscard]] StencilOpInfo getFrontStencilOp() const noexcept
+    {
+      return StencilOpInfo{static_cast<StencilOp>(vkDepthStencilState_.back.failOp),
+          static_cast<StencilOp>(vkDepthStencilState_.back.passOp),
+          static_cast<StencilOp>(vkDepthStencilState_.back.depthFailOp),
+          static_cast<CompareOp>(vkDepthStencilState_.back.compareOp)};
+    }
 
    private:
     VezPipelineDepthStencilState vkDepthStencilState_ = {};

@@ -26,6 +26,8 @@ namespace wsystem
 
   // Window -----------------------------------------------------------------------------------------------------------
 
+  using NativeHandle = void*;
+
   class WindowImpl;
 
   class Window
@@ -39,6 +41,8 @@ namespace wsystem
     {
       return pimpl_;
     }
+
+    [[nodiscard]] NativeHandle getNativeHandle() const;
 
     // parameters
 

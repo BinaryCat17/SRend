@@ -12,6 +12,8 @@ namespace utils::allocator
     bool is_empty;
   };
 
+  using AllocIter = std::multimap<SizeT, AllocInfo>::iterator;
+
   // DefaultAllocPolicy -----------------------------------------------------------------------------------------------
 
   class DefaultAllocPolicy : public AllocatorImpl
@@ -23,14 +25,15 @@ namespace utils::allocator
 
     [[nodiscard]] SizeT size() const override
     {
-      return current_size_;
+      return currentSize_;
     }
 
     [[nodiscard]] SizeT requiredExtension(SizeT size, AlignmentT alignment) const override;
 
    private:
-    std::map<SizeT, AllocInfo> allocations_;
-    SizeT current_size_ = 0;
+    std::multimap<SizeT, AllocInfo> allocations_;
+    SizeT currentSize_ = 0;
+    SizeT maxSize_ = 0;
   };
 
 }  // namespace utils::allocator

@@ -22,8 +22,6 @@ namespace vulkan
     BufferManager stagingManager;
   };
 
-  VezMemoryFlags toVkMemoryFlags(MemoryType type);
-
   // DeviceImpl -------------------------------------------------------------------------------------------------------
 
   class DeviceImpl
@@ -31,8 +29,6 @@ namespace vulkan
    public:
     explicit DeviceImpl(std::shared_ptr<ApplicationImpl> const& application, DeviceCreateFlags const& createFlags,
         PhysicalDevice const& physicalDevice);
-
-    ~DeviceImpl();
 
     DeviceImpl(DeviceImpl const&) = delete;
 
@@ -42,9 +38,19 @@ namespace vulkan
 
     DeviceImpl& operator=(DeviceImpl&&) = delete;
 
+    [[nodiscard]] std::shared_ptr<ApplicationImpl> const& getApplication() const
+    {
+      return application_;
+    }
+
+    [[nodiscard]] std::shared_ptr<PhysicalDeviceImpl> const& getPhysicalDevice() const
+    {
+      return physicalDevice_;
+    }
+
     [[nodiscard]] vk::Device getVkDevice() const
     {
-      return vkDevice_;
+      return vkDevice_.get();
     }
 
     [[nodiscard]] DeviceQueues& getQueues()
@@ -57,11 +63,10 @@ namespace vulkan
       return buffers_;
     }
 
-    // interface
-
    private:
     std::shared_ptr<ApplicationImpl> application_;
-    vk::Device vkDevice_;
+    std::shared_ptr<PhysicalDeviceImpl> physicalDevice_;
+    std::unique_ptr<VkDevice_T, decltype(vezDestroyDevice)*> vkDevice_;
     DeviceQueues queues_;
     DeviceBuffers buffers_;
   };

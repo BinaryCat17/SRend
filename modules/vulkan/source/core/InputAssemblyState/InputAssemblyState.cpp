@@ -11,26 +11,30 @@ namespace vulkan
 
   // InputAssemblyStateImpl -------------------------------------------------------------------------------------------
 
-  void InputAssemblyStateImpl::setPrimitiveTopology(PrimitiveTopology topology)
-  {
-    vkInputAssemblyState_.topology = static_cast<VkPrimitiveTopology>(toVkPrimitiveTopology(topology));
-  }
-
   // InputAssemblyState -----------------------------------------------------------------------------------------------
 
-  void InputAssemblyState::setPrimitiveTopology(PrimitiveTopology topology)
+  void InputAssemblyState::setPrimitiveTopology(PrimitiveTopology topology) noexcept
   {
     pimpl_->setPrimitiveTopology(topology);
   }
 
-  void InputAssemblyState::enablePrimitiveRestart()
+  void InputAssemblyState::setPrimitiveRestart(bool val) noexcept
   {
-    pimpl_->enablePrimitiveRestart();
+    pimpl_->setPrimitiveRestart(val);
   }
 
-  void InputAssemblyState::disablePrimitiveRestart()
+  [[nodiscard]] PrimitiveTopology InputAssemblyState::getPrimitiveTopology() const noexcept
   {
-    pimpl_->disablePrimitiveRestart();
+    return pimpl_->getPrimitiveTopology();
+  }
+
+  [[nodiscard]] bool InputAssemblyState::getPrimitiveRestart() const noexcept
+  {
+    return pimpl_->getPrimitiveRestart();
+  }
+  InputAssemblyState::InputAssemblyState(Device const& device, InputAssemblyStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<InputAssemblyStateImpl>(device.getImpl(), createFlags))
+  {
   }
 
 }  // namespace vulkan

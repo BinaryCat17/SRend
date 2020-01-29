@@ -23,7 +23,9 @@ add_library(${PROJECT_NAME}
         source/core/ViewportState/ViewportState.cpp
         source/core/RenderPass/RenderPass.cpp
         source/core/Framebuffer/Framebuffer.cpp
-        )
+        source/presentation/Device/Device.cpp
+        source/presentation/RenderWindow/RenderWindow.cpp
+        source/presentation/RenderWindow/RenderWindow.cpp)
 
 target_include_directories(${PROJECT_NAME}
         INTERFACE
@@ -35,12 +37,13 @@ target_compile_features(${PROJECT_NAME}
         cxx_std_20)
 
 if (MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
 else ()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror)
 endif ()
 
 # libs
+
 
 find_package(Vulkan REQUIRED FATAL_ERROR)
 target_link_libraries(${PROJECT_NAME} PUBLIC utils wsystem PRIVATE VEZ Vulkan::Vulkan)

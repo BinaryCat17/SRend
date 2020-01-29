@@ -150,7 +150,7 @@ namespace vulkan
       void* messenger)
   {
     reinterpret_cast<utils::debug::Messenger const*>(messenger)->report(
-        std::string("Vulkan callback : ") + pCallbackData->pMessage,
+        std::string("Vulkan callback : \"") + pCallbackData->pMessage + std::string("\""),
         toMessageSeverity(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity)),
         toMessageTypeFlags(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(messageType)));
 
@@ -252,11 +252,6 @@ namespace vulkan
   std::vector<PhysicalDevice> Application::getSupportedPhysicalDevices() const
   {
     return pimpl_->getSupportedPhysicalDevices();
-  }
-
-  Device Application::createDevice(DeviceCreateFlags const& createFlags, PhysicalDevice const& physicalDevice) const
-  {
-    return Device(std::make_shared<DeviceImpl>(pimpl_, createFlags, physicalDevice));
   }
 
 }  // namespace vulkan

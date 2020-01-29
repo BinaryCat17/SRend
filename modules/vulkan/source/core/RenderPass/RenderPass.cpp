@@ -16,40 +16,60 @@ namespace vulkan
 
   // RenderPassImpl ---------------------------------------------------------------------------------------------------
 
-  void RenderPassImpl::addColorAttachment(
-      std::array<float, 4> const& clearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store)
+  void RenderPassImpl::addAttachment(std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+      AttachmentLoadOp loadOp, AttachmentStoreOp store)
   {
-    VezAttachmentReference attachment = {};
-    attachment.storeOp = toVkAttachmentStoreOp(store);
-    attachment.loadOp = toVkAttachmentLoadOp(loadOp);
-    attachment.clearValue.color = {{clearValue[0], clearValue[1], clearValue[2], clearValue[3]}};
-
-    attachments_.push_back(attachment);
+    attachments_.push_back({});
+    setAttachment(attachments_.size() - 1, clearValue, loadOp, store);
   }
 
-  void RenderPassImpl::addDepthAttachment(
-      float depthClearValue, unsigned stencilClearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store)
+  void RenderPassImpl::setAttachment(utils::IndexT index,
+      std::variant<ColorClearValue, DepthClearValue> const& clearValue, AttachmentLoadOp loadOp,
+      AttachmentStoreOp store)
   {
     VezAttachmentReference attachment = {};
     attachment.storeOp = toVkAttachmentStoreOp(store);
     attachment.loadOp = toVkAttachmentLoadOp(loadOp);
-    attachment.clearValue.depthStencil = {VkClearDepthStencilValue{depthClearValue, stencilClearValue}};
+    std::visit(
+        [&attachment]<typename T>(T const& val) {
+          if constexpr (std::is_same_v<T, ColorClearValue>)
+          {
+            attachment.clearValue.color = {
+                {val.clearValue[0], val.clearValue[1], val.clearValue[2], val.clearValue[3]}};
+          }
+          else
+          {
+            attachment.clearValue.depthStencil.depth = val.depthClearValue;
+            attachment.clearValue.depthStencil.stencil = val.stencilClearValue;
+          }
+        },
+        clearValue);
 
-    attachments_.push_back(attachment);
+    attachments_[index] = attachment;
   }
 
   // RenderPass -------------------------------------------------------------------------------------------------------
 
-  void RenderPass::addColorAttachment(
-      std::array<float, 4> const& clearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store)
+  RenderPass::RenderPass(Device const& device, RenderPassCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<RenderPassImpl>(device.getImpl(), createFlags))
   {
-    pimpl_->addColorAttachment(clearValue, loadOp, store);
   }
 
-  void RenderPass::addDepthAttachment(
-      float depthClearValue, unsigned stencilClearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store)
+  void RenderPass::addAttachment(std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+      AttachmentLoadOp loadOp, AttachmentStoreOp store)
   {
-    pimpl_->addDepthAttachment(depthClearValue, stencilClearValue, loadOp, store);
+    pimpl_->addAttachment(clearValue, loadOp, store);
+  }
+
+  void RenderPass::setAttachment(utils::IndexT index, std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+      AttachmentLoadOp loadOp, AttachmentStoreOp store)
+  {
+    pimpl_->setAttachment(index, clearValue, loadOp, store);
+  }
+
+  void RenderPass::removeAttachment(utils::IndexT index)
+  {
+    pimpl_->removeAttachment(index);
   }
 
 }  // namespace vulkan

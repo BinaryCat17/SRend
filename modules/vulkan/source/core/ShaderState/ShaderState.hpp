@@ -8,7 +8,6 @@ namespace vulkan
 
   struct ShaderInfo
   {
-    Shader shader;
     std::string entryPoint = "main";
     std::map<utils::IndexT, utils::SharedAnyPtr> specConstants = {};
   };
@@ -28,6 +27,8 @@ namespace vulkan
 
     ShaderStateImpl& operator=(ShaderStateImpl&&) = delete;
 
+    ~ShaderStateImpl();
+
     [[nodiscard]] VezPipeline getVkPipeline() const
     {
       return vkPipeline_;
@@ -35,17 +36,20 @@ namespace vulkan
 
     void addShader(Shader const& shader);
 
-    void setShaderEntryPoint(utils::IndexT index, std::string const& name);
+    void removeShader(Shader const& shader)
+    {
+      shaders_.erase(shader);
+    }
 
-    void setShaderSpecConstant(utils::IndexT index, utils::IndexT constantId, utils::SharedAnyPtr const& pData);
+    void setEntryPoint(Shader const& shader, std::string const& name);
 
-    void removeShader(utils::IndexT index);
+    [[nodiscard]] std::string getEntryPoint(Shader const& shader) const;
 
     void update();
 
    private:
     std::shared_ptr<DeviceImpl> device_;
-    std::vector<ShaderInfo> shaders_;
+    std::map<Shader, ShaderInfo> shaders_;
     VezPipeline vkPipeline_ = {};
     bool needUpdate_ = true;
   };

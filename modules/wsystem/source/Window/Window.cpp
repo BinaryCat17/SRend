@@ -1,4 +1,6 @@
 #include "WindowImpl.hpp"
+#include "Window.hpp"
+
 
 namespace wsystem
 {
@@ -57,6 +59,11 @@ namespace wsystem
   Window::Signal& Window::onMove()
   {
     return pimpl_->onMove;
+  }
+
+  NativeHandle Window::getNativeHandle() const
+  {
+    return pimpl_->getNativeHandle();
   }
 
 }  // namespace wsystem

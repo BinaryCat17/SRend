@@ -29,49 +29,69 @@ namespace vulkan
 
   // ViewportState ----------------------------------------------------------------------------------------------------
 
-  void DepthStencilState::enableDepthTest()
+  DepthStencilState::DepthStencilState(Device const& device, DepthStencilStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<DepthStencilStateImpl>(device.getImpl(), createFlags))
   {
-    pimpl_->enableDepthTest();
   }
 
-  void DepthStencilState::disableDepthTest()
+  void DepthStencilState::setDepthTest(bool val) noexcept
   {
-    pimpl_->disableDepthTest();
+    pimpl_->setDepthTest(val);
   }
 
-  void DepthStencilState::enableDepthWrite()
+  void DepthStencilState::setDepthWrite(bool val) noexcept
   {
-    pimpl_->enableDepthWrite();
+    pimpl_->setDepthWrite(val);
   }
 
-  void DepthStencilState::disableDepthWrite()
+  void DepthStencilState::setDepthCompareOp(CompareOp val) noexcept
   {
-    pimpl_->disableDepthWrite();
+    pimpl_->setDepthCompareOp(val);
   }
 
-  void DepthStencilState::setDepthCompareOp(CompareOp op)
+  void DepthStencilState::setDepthBoundsTest(bool val) noexcept
   {
-    pimpl_->setDepthCompareOp(op);
+    pimpl_->setDepthBoundsTest(val);
   }
 
-  void DepthStencilState::enableDepthBoundsTest()
+  void DepthStencilState::setBackStencilOp(StencilOpInfo const& val) noexcept
   {
-    pimpl_->enableDepthBoundsTest();
+    pimpl_->setBackStencilOp(val);
   }
 
-  void DepthStencilState::disableDepthBoundsTest()
+  void DepthStencilState::setFrontStencilOp(StencilOpInfo const& val) noexcept
   {
-    pimpl_->disableDepthBoundsTest();
+    pimpl_->setFrontStencilOp(val);
   }
 
-  void DepthStencilState::setBackStencilOp(StencilOpInfo const& state)
+  [[nodiscard]] bool DepthStencilState::getDepthTest() const noexcept
   {
-    pimpl_->setBackStencilOp(state);
+    return pimpl_->getDepthTest();
   }
 
-  void DepthStencilState::setFrontStencilOp(StencilOpInfo const& state)
+  [[nodiscard]] bool DepthStencilState::getDepthWrite() const noexcept
   {
-    pimpl_->setFrontStencilOp(state);
+    return pimpl_->getDepthWrite();
+  }
+
+  [[nodiscard]] CompareOp DepthStencilState::getDepthCompareOp() const noexcept
+  {
+    return pimpl_->getDepthCompareOp();
+  }
+
+  [[nodiscard]] bool DepthStencilState::getDepthBoundsTest() const noexcept
+  {
+    return pimpl_->getDepthBoundsTest();
+  }
+
+  [[nodiscard]] StencilOpInfo DepthStencilState::getBackStencilOp() const noexcept
+  {
+    return pimpl_->getBackStencilOp();
+  }
+
+  [[nodiscard]] StencilOpInfo DepthStencilState::getFrontStencilOp() const noexcept
+  {
+    return pimpl_->getFrontStencilOp();
   }
 
 }  // namespace vulkan

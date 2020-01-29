@@ -25,18 +25,25 @@ namespace vulkan
       return vkInputAssemblyState_;
     }
 
-    void setPrimitiveTopology(PrimitiveTopology topology);
-
-    void enablePrimitiveRestart()
+    void setPrimitiveRestart(bool val) noexcept
     {
-      vkInputAssemblyState_.primitiveRestartEnable = true;
+      vkInputAssemblyState_.primitiveRestartEnable = val;
     }
 
-    void disablePrimitiveRestart()
+    [[nodiscard]] bool getPrimitiveRestart() const noexcept
     {
-      vkInputAssemblyState_.primitiveRestartEnable = false;
+      return vkInputAssemblyState_.primitiveRestartEnable;
     }
 
+    void setPrimitiveTopology(PrimitiveTopology topology)
+    {
+      vkInputAssemblyState_.topology = static_cast<VkPrimitiveTopology>(topology);
+    }
+
+    [[nodiscard]] PrimitiveTopology getPrimitiveTopology() const noexcept
+    {
+      return static_cast<PrimitiveTopology>(vkInputAssemblyState_.topology);
+    }
    private:
     VezInputAssemblyState vkInputAssemblyState_ = {};
   };

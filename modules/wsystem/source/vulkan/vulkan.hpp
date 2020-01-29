@@ -10,6 +10,6 @@ namespace wsystem
 {
   std::vector<char const*> getVulkanInstanceExtensions(const Manager& manager);
 
-  VkSurfaceKHR createVulkanSurface(const Manager& manager, const Window& window, VkInstance instance);
+  VkSurfaceKHR createVulkanSurface(const Window& window, VkInstance instance);
 
 }  // namespace wsystem

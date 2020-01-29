@@ -21,8 +21,7 @@ namespace utils
   std::vector<std::string> readIsToStringVec(std::istream &is)
   {
     std::vector<std::string> result;
-    for (std::string line; getline(is, line); result.push_back(line))
-      ;
+    for (std::string line; getline(is, line); result.push_back(line));
     return result;
   }
 
@@ -50,6 +49,22 @@ namespace utils
       result += str;
     }
     return result;
+  }
+
+  std::vector<char> readBinaryFile(std::filesystem::path const &filename)
+  {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open()) {
+      throw std::runtime_error("failed to open file!");
+    }
+
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+
+    return buffer;
   }
 
 }  // namespace utils

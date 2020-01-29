@@ -26,6 +26,6 @@ endif ()
 
 # libs
 
-target_link_libraries(${PROJECT_NAME} PUBLIC utils PRIVATE SDL2)
+target_link_libraries(${PROJECT_NAME} PUBLIC utils PRIVATE SDL2 imgui)
 
 

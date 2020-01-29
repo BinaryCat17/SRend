@@ -9,9 +9,9 @@ namespace wsystem
     return manager.getBase()->getInstanceExtensions();
   }
 
-  VkSurfaceKHR createVulkanSurface(const Manager& manager, const Window& window, VkInstance instance)
+  VkSurfaceKHR createVulkanSurface(const Window& window, VkInstance instance)
   {
-    return manager.getBase()->createSurface(window.getImpl()->getBase(), instance);
+    return window.getImpl()->getBase()->createSurface(instance);
   }
 
 }  // namespace wsystem

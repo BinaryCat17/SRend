@@ -31,118 +31,152 @@ namespace vulkan
       return vkSampler_;
     }
 
-    void setMagFilter(Filter const& val)
+    void update();
+
+    void setMagFilter(Filter const& val) noexcept
     {
       magFilter_ = val;
-      needUpdate_ = true;
     }
 
-    void setMinFilter(Filter const& val)
+    void setMinFilter(Filter const& val) noexcept
     {
-      magFilter_ = val;
-      needUpdate_ = true;
+      minFilter_ = val;
     }
 
-    void setMipMapMode(SamplerMipMapMode const& val)
+    void setMipMapMode(MipMapMode const& val) noexcept
     {
       mipMapMode_ = val;
-      needUpdate_ = true;
     }
 
-    void setAddressModeU(SamplerAddressMode const& val)
+    void setAddressModeU(AddressMode const& val) noexcept
     {
       addressModeU_ = val;
-      needUpdate_ = true;
     }
 
-    void setAddressModeV(SamplerAddressMode const& val)
+    void setAddressModeV(AddressMode const& val) noexcept
     {
       addressModeV_ = val;
-      needUpdate_ = true;
     }
 
-    void setAddressModeW(SamplerAddressMode const& val)
+    void setAddressModeW(AddressMode const& val) noexcept
     {
       addressModeW_ = val;
-      needUpdate_ = true;
     }
 
-    void setMipLodBias(float val)
+    void setMipLodBias(float val) noexcept
     {
       mipLodBias_ = val;
-      needUpdate_ = true;
     }
 
-    void enableAnisotropy(float val)
+    void setAnisotropy(std::optional<float> val) noexcept
     {
       anisotropy_ = val;
-      needUpdate_ = true;
     }
 
-    void disableAnisotropy()
-    {
-      anisotropy_.reset();
-      needUpdate_ = true;
-    }
-
-    void enableCompareOp(CompareOp val)
+    void setCompareOp(std::optional<CompareOp> val) noexcept
     {
       compareOp_ = val;
-      needUpdate_ = true;
     }
 
-    void disableCompareOp()
-    {
-      compareOp_.reset();
-      needUpdate_ = true;
-    }
-
-    void setMinLod(float val)
+    void setMinLod(float val) noexcept
     {
       minLod_ = val;
-      needUpdate_ = true;
     }
 
-    void setMaxLod(float val)
+    void setMaxLod(float val) noexcept
     {
       maxLod_ = val;
-      needUpdate_ = true;
     }
 
-    void setBorderColor(BorderColor val)
+    void setBorderColor(BorderColor val) noexcept
     {
       borderColor_ = val;
-      needUpdate_ = true;
     }
 
-    void enableUnnormalizedCoordinates()
+    void setUnnormalizedCoordinates(bool val) noexcept
     {
-      unnormalizedCoordinates_ = true;
-      needUpdate_ = true;
+      unnormalizedCoordinates_ = val;
     }
 
-    void disableUnnormalizedCoordinates()
+    [[nodiscard]] Filter getMagFilter() const noexcept
     {
-      unnormalizedCoordinates_ = false;
-      needUpdate_ = true;
+      return magFilter_;
     }
 
-    void update();
+    [[nodiscard]] Filter getMinFilter() const noexcept
+    {
+      return  minFilter_;
+    }
+
+    [[nodiscard]] MipMapMode getMipMapMode() const noexcept
+    {
+      return mipMapMode_;
+    }
+
+    [[nodiscard]] AddressMode getAddressModeU() const noexcept
+    {
+      return addressModeU_;
+    }
+
+    [[nodiscard]] AddressMode getAddressModeV() const noexcept
+    {
+      return addressModeV_;
+    }
+
+    [[nodiscard]] AddressMode getAddressModeW() const noexcept
+    {
+      return addressModeW_;
+    }
+
+    [[nodiscard]] float getMipLodBias() const noexcept
+    {
+      return mipLodBias_;
+    }
+
+    [[nodiscard]] std::optional<float> getAnisotropy() const noexcept
+    {
+      return anisotropy_;
+    }
+
+    [[nodiscard]] std::optional<CompareOp> getCompareOp() const noexcept
+    {
+      return compareOp_;
+    }
+
+    [[nodiscard]] float getMinLod() const noexcept
+    {
+      return minLod_;
+    }
+
+    [[nodiscard]] float getMaxLod() const noexcept
+    {
+      return maxLod_;
+    }
+
+    [[nodiscard]] BorderColor getBorderColor() const noexcept
+    {
+      return borderColor_;
+    }
+
+    [[nodiscard]] bool getUnnormalizedCoordinates() const noexcept
+    {
+      return unnormalizedCoordinates_;
+    }
 
    private:
     std::shared_ptr<DeviceImpl> device_;
-    Filter magFilter_ = {};
-    Filter minFilter_ = {};
-    SamplerMipMapMode mipMapMode_ = {};
-    SamplerAddressMode addressModeU_ = {};
-    SamplerAddressMode addressModeV_ = {};
-    SamplerAddressMode addressModeW_ = {};
+    Filter magFilter_ = vulkan::Filter::Linear;
+    Filter minFilter_ = vulkan::Filter::Linear;
+    MipMapMode mipMapMode_ =  vulkan::MipMapMode::Linear;
+    AddressMode addressModeU_ = vulkan::AddressMode::ClampToEdge;
+    AddressMode addressModeV_ = vulkan::AddressMode::ClampToEdge;
+    AddressMode addressModeW_ = vulkan::AddressMode::ClampToEdge;
     float mipLodBias_ = {};
     std::optional<float> anisotropy_ = {};
     std::optional<CompareOp> compareOp_ = {};
     float minLod_ = {};
     float maxLod_ = {};
-    BorderColor borderColor_ = {};
+    BorderColor borderColor_ = vulkan::BorderColor::FloatOpaqueWhite;
     bool unnormalizedCoordinates_ = {};
     vk::Sampler vkSampler_ = {};
     bool needUpdate_ = true;

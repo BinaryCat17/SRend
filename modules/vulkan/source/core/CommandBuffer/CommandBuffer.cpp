@@ -9,6 +9,7 @@
 #include "../RasterizationState/RasterizationState.hpp"
 #include "../RenderPass/RenderPass.hpp"
 #include "../Sampler/Sampler.hpp"
+#include "../Semaphore/Semaphore.hpp"
 #include "../ShaderState/ShaderState.hpp"
 #include "../VertexInputState/VertexInputState.hpp"
 #include "../ViewportState/ViewportState.hpp"
@@ -33,10 +34,72 @@ namespace vulkan
     return result;
   }
 
+  std::vector<VkCommandBuffer> toVkCommandBuffers(
+      std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos)
+  {
+    std::vector<VkCommandBuffer> result;
+    result.reserve(submitInfos.size());
+
+    for (auto const& info : submitInfos)
+    {
+      info.first.getImpl()->endRenderPass();
+      result.push_back(info.first.getImpl()->getVkCommandBuffer());
+    }
+
+    return result;
+  }
+
+  std::vector<VkSemaphore> toVkSemaphores(
+      std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos)
+  {
+    std::vector<VkSemaphore> result;
+
+    for (auto const& info : submitInfos)
+    {
+      for (auto const& waitInfo : info.second)
+      {
+        result.push_back(waitInfo.semaphore.getImpl()->getVkSemaphore());
+      }
+    }
+
+    return result;
+  }
+
+  std::vector<VkPipelineStageFlags> toVkWaitStages(
+      std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos)
+  {
+    std::vector<VkPipelineStageFlags> result;
+
+    for (auto const& info : submitInfos)
+    {
+      for (auto const& waitInfo : info.second)
+      {
+        result.push_back(static_cast<VkPipelineStageFlags>(waitInfo.waitStages));
+      }
+    }
+
+    return result;
+  }
+
+  vk::Queue pickQueue(std::shared_ptr<DeviceImpl> const& device, CommandBufferType type)
+  {
+    switch (type)
+    {
+      case CommandBufferType::Transfer:
+        return device->getQueues().transferQueue;
+      case CommandBufferType::Graphic:
+        return device->getQueues().graphicQueue;
+      case CommandBufferType::Compute:
+        return device->getQueues().computeQueue;
+    }
+    throw std::runtime_error("undefined queue");
+  }
+
   // CommandBufferImpl ------------------------------------------------------------------------------------------------
 
-  CommandBufferImpl::CommandBufferImpl(std::shared_ptr<DeviceImpl> device, vk::CommandBuffer vkCommandBuffer)
-      : device_(std::move(device)), vkCommandBuffer_(vkCommandBuffer)
+  CommandBufferImpl::CommandBufferImpl(
+      std::shared_ptr<DeviceImpl> device, vk::CommandBuffer vkCommandBuffer, vk::Queue queue)
+      : device_(std::move(device)), vkCommandBuffer_(vkCommandBuffer), queue_(queue)
   {
   }
 
@@ -50,24 +113,16 @@ namespace vulkan
     vezBeginCommandBuffer(vkCommandBuffer_, toVkCommandBufferUsageFlags(beginFlags));
   }
 
-  void CommandBufferImpl::end()
-  {
-    vezEndCommandBuffer();
-  }
-
   void CommandBufferImpl::beginRender(Framebuffer const& framebuffer, RenderPass const& renderPass)
   {
+    framebuffer.getImpl()->update();
     VezRenderPassBeginInfo beginInfo = {};
     beginInfo.pAttachments = renderPass.getImpl()->getVkAttachments().data();
     beginInfo.attachmentCount = static_cast<uint32_t>(renderPass.getImpl()->getVkAttachments().size());
     beginInfo.framebuffer = framebuffer.getImpl()->getVkFramebuffer();
 
     vezCmdBeginRenderPass(&beginInfo);
-  }
-
-  void CommandBufferImpl::endRender()
-  {
-    vezCmdEndRenderPass();
+    inRenderPass_ = true;
   }
 
   void CommandBufferImpl::setShaderState(ShaderState const& state)
@@ -104,6 +159,8 @@ namespace vulkan
 
   void CommandBufferImpl::setViewportState(ViewportState const& state)
   {
+    state.getImpl()->update();
+
     auto vkViewports = state.getImpl()->getVkViewports();
     auto vkScissors = state.getImpl()->getVkScissors();
 
@@ -160,7 +217,7 @@ namespace vulkan
     range.dstSubresource = {static_cast<uint32_t>(dstSubResource.baseMipLevel),
         static_cast<uint32_t>(dstSubResource.baseArrayLayer), static_cast<uint32_t>(dstSubResource.arrayLayerCount)};
 
-    for (uint32_t i = dstSubResource.baseMipLevel; i != dstSubResource.mipLevelCount; ++i)
+    for (auto i = static_cast<uint32_t>(dstSubResource.baseMipLevel); i != dstSubResource.mipLevelCount; ++i)
     {
       vezCmdCopyImage(srcImage.getImpl()->getVkImage(), dstImage.getImpl()->getVkImage(), 1, &range);
 
@@ -174,7 +231,7 @@ namespace vulkan
       utils::Extent3D const& imageExtent)
   {
     VezBufferImageCopy range = {};
-    range.bufferOffset = bufferOffset;
+    range.bufferOffset = buffer.getImpl()->offset() + bufferOffset;
     range.bufferImageHeight = static_cast<uint32_t>(bufferImageHeight);
     range.bufferRowLength = static_cast<uint32_t>(bufferRowLength);
     range.imageExtent = toVkExtent(imageExtent);
@@ -183,7 +240,7 @@ namespace vulkan
         static_cast<uint32_t>(imageSubResource.baseArrayLayer),
         static_cast<uint32_t>(imageSubResource.arrayLayerCount)};
 
-    for (uint32_t i = imageSubResource.baseMipLevel; i != imageSubResource.mipLevelCount; ++i)
+    for (auto i = static_cast<uint32_t>(imageSubResource.baseMipLevel); i != imageSubResource.mipLevelCount; ++i)
     {
       vezCmdCopyBufferToImage(buffer.getImpl()->getVkBuffer(), image.getImpl()->getVkImage(), 1, &range);
 
@@ -195,14 +252,30 @@ namespace vulkan
   {
     auto const& bufferImpl = buffer.getImpl();
 
-    vezCmdBindBuffer(bufferImpl->getVkBuffer(), bufferImpl->offset(), buffer.getSize(), bindingInfo.set,
-        bindingInfo.binding, bindingInfo.index);
+    vezCmdBindBuffer(bufferImpl->getVkBuffer(), bufferImpl->offset(), buffer.getSize(),
+        static_cast<uint32_t>(bindingInfo.set), static_cast<uint32_t>(bindingInfo.binding),
+        static_cast<uint32_t>(bindingInfo.index));
   }
 
   void CommandBufferImpl::bindImage(Image const& image, Sampler const& sampler, BindingInfo const& bindingInfo)
   {
-    vezCmdBindImageView(image.getImpl()->getVkImageView(), sampler.getImpl()->getVkSampler(), bindingInfo.set,
-        bindingInfo.binding, bindingInfo.index);
+    sampler.getImpl()->update();
+    vezCmdBindImageView(image.getImpl()->getVkImageView(), sampler.getImpl()->getVkSampler(),
+        static_cast<uint32_t>(bindingInfo.set), static_cast<uint32_t>(bindingInfo.binding),
+        static_cast<uint32_t>(bindingInfo.index));
+  }
+
+  void CommandBufferImpl::bindVertexBuffer(Buffer const& buffer)
+  {
+    VkBuffer vkBuffer = buffer.getImpl()->getVkBuffer();
+    VkDeviceSize offset = buffer.getImpl()->offset();
+    vezCmdBindVertexBuffers(0, 1, &vkBuffer, &offset);
+  }
+
+  void CommandBufferImpl::bindIndexBuffer(Buffer const& buffer, IndexType indexType)
+  {
+    vezCmdBindIndexBuffer(
+        buffer.getImpl()->getVkBuffer(), buffer.getImpl()->offset(), static_cast<VkIndexType>(indexType));
   }
 
   // CommandBuffer ----------------------------------------------------------------------------------------------------
@@ -212,19 +285,9 @@ namespace vulkan
     pimpl_->begin(beginFlags);
   }
 
-  void CommandBuffer::end()
-  {
-    pimpl_->end();
-  }
-
   void CommandBuffer::beginRender(Framebuffer const& framebuffer, RenderPass const& renderPass)
   {
     pimpl_->beginRender(framebuffer, renderPass);
-  }
-
-  void CommandBuffer::endRender()
-  {
-    pimpl_->endRender();
   }
 
   void CommandBuffer::copyBuffer(Buffer const& srcBuffer, utils::OffsetT srcOffset, Buffer const& dstBuffer,
@@ -313,6 +376,7 @@ namespace vulkan
   {
     pimpl_->setInputAssemblyState(state);
   }
+
   void CommandBuffer::setRasterizationState(RasterizationState const& state)
   {
     pimpl_->setRasterizationState(state);
@@ -336,6 +400,86 @@ namespace vulkan
   void CommandBuffer::setColorBlendState(ColorBlendState const& state)
   {
     pimpl_->setColorBlendState(state);
+  }
+
+  void CommandBuffer::bindVertexBuffer(Buffer const& buffer)
+  {
+    pimpl_->bindVertexBuffer(buffer);
+  }
+
+  void CommandBuffer::bindIndexBuffer(Buffer const& buffer, IndexType indexType)
+  {
+    pimpl_->bindIndexBuffer(buffer, indexType);
+  }
+
+  CommandBuffer::CommandBuffer(
+      Device const& device, CommandBufferCreateFlags const& createFlags, CommandBufferType type)
+  {
+    *this = createCommandBuffers(device, 1, createFlags, type).front();
+  }
+
+  Semaphore CommandBuffer::submit(std::vector<WaitInfo> const& waitInfos)
+  {
+    pimpl_->endRenderPass();
+    vezEndCommandBuffer();
+    return submitCommandBuffers(Device(pimpl_->getDevice()), {{*this, waitInfos}}).front();
+  }
+
+  std::vector<CommandBuffer> createCommandBuffers(
+      Device const& device, utils::SizeT count, CommandBufferCreateFlags const&, CommandBufferType type)
+  {
+    VezCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.queue = pickQueue(device.getImpl(), type);
+    allocInfo.commandBufferCount = static_cast<uint32_t>(count);
+
+    std::vector<vk::CommandBuffer> vkCommandBuffers(count);
+    checkResult(vezAllocateCommandBuffers(
+        device.getImpl()->getVkDevice(), &allocInfo, reinterpret_cast<VkCommandBuffer*>(vkCommandBuffers.data())));
+
+    std::vector<CommandBuffer> result;
+    result.reserve(vkCommandBuffers.size());
+
+    for (auto vkCommandBuffer : vkCommandBuffers)
+    {
+      result.emplace_back(std::make_shared<CommandBufferImpl>(device.getImpl(), vkCommandBuffer, allocInfo.queue));
+    }
+
+    return result;
+  }
+
+  std::vector<Semaphore> submitCommandBuffers(
+      Device const& device, std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos)
+  {
+    std::vector<vk::Semaphore> signalSemaphores(submitInfos.size());
+    std::vector<VkCommandBuffer> commandBuffers = toVkCommandBuffers(submitInfos);
+    std::vector<VkSemaphore> waitSemaphores = toVkSemaphores(submitInfos);
+    std::vector<VkPipelineStageFlags> waitStages = toVkWaitStages(submitInfos);
+
+    VezSubmitInfo vkSubmitInfo = {};
+    vkSubmitInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+    vkSubmitInfo.pCommandBuffers = commandBuffers.data();
+    vkSubmitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
+    vkSubmitInfo.pWaitSemaphores = waitSemaphores.data();
+    vkSubmitInfo.pWaitDstStageMask = waitStages.data();
+    vkSubmitInfo.signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size());
+    vkSubmitInfo.pSignalSemaphores = reinterpret_cast<VkSemaphore*>(signalSemaphores.data());
+
+    auto const& deviceImpl = device.getImpl();
+
+    VkFence waitFence = nullptr;
+    checkResult(vezQueueSubmit(submitInfos.front().first.getImpl()->getVkQueue(), 1, &vkSubmitInfo, &waitFence));
+    checkResult(vezWaitForFences(deviceImpl->getVkDevice(), 1, &waitFence, true, UINT64_MAX));
+    vezDestroyFence(deviceImpl->getVkDevice(), waitFence);
+
+    std::vector<Semaphore> result;
+    result.reserve(signalSemaphores.size());
+
+    for (auto const& semaphore : signalSemaphores)
+    {
+      result.emplace_back(std::make_shared<SemaphoreImpl>(semaphore));
+    }
+
+    return result;
   }
 
 }  // namespace vulkan

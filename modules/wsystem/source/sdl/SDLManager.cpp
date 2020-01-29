@@ -1,7 +1,10 @@
 #include "SdlManager.hpp"
 #include <SDL.h>
+#include <SDL_vulkan.h>
+#include <imgui.h>
+#include <imgui_impl_sdl.h>
 #include <map>
-#include "SDL_vulkan.h"
+#include <queue>
 #include "SdlWindow.hpp"
 
 namespace wsystem
@@ -64,17 +67,36 @@ namespace wsystem
         window.second->setIsMoved(false);
       }
 
+      std::deque<SDL_Event> pushEvents;
+
       SDL_Event evt = {};
       while (SDL_PollEvent(&evt))
       {
         switch (evt.type)
         {
           case SDL_WINDOWEVENT:
+            ImGui_ImplSDL2_ProcessEvent(&evt);
             catchWindowEvents(get().windows_, evt);
+            break;
+
+          case SDL_KEYDOWN:
+            if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_RIGHT ||
+                evt.key.keysym.sym == SDLK_LEFT || evt.key.keysym.sym == SDLK_ESCAPE)
+            {
+              pushEvents.push_front(evt);
+            }
+            break;
 
           default:
+
+            ImGui_ImplSDL2_ProcessEvent(&evt);
             break;
         }
+      }
+
+      for(auto & event : pushEvents)
+      {
+        SDL_PushEvent(&event);
       }
     }
 
@@ -133,17 +155,6 @@ namespace wsystem
       throw std::runtime_error(SDL_GetError());
     }
     return extensions;
-  }
-
-  VkSurfaceKHR SdlManager::createSurface(std::shared_ptr<BaseWindow> const& window, VkInstance instance) const
-  {
-    VkSurfaceKHR result;
-    if (!SDL_Vulkan_CreateSurface(
-            std::dynamic_pointer_cast<SdlWindow>(window)->getSdlWindow().get(), instance, &result))
-    {
-      throw std::runtime_error(SDL_GetError());
-    }
-    return result;
   }
 
 }  // namespace wsystem

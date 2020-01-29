@@ -25,10 +25,16 @@ namespace vulkan
       return attachments_;
     }
 
-    void addColorAttachment(std::array<float, 4> const& clearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store);
+    void addAttachment(std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+                       AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
 
-    void addDepthAttachment(
-        float depthClearValue, unsigned stencilClearValue, AttachmentLoadOp loadOp, AttachmentStoreOp store);
+    void setAttachment(utils::IndexT index, std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+                       AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
+
+    void removeAttachment(utils::IndexT index)
+    {
+      attachments_.erase(attachments_.begin() + index);
+    }
 
    private:
     std::vector<VezAttachmentReference> attachments_;

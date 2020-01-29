@@ -24,12 +24,12 @@ namespace vulkan
 
   // PhysicalDevice ---------------------------------------------------------------------------------------------------
 
-  std::string PhysicalDevice::name() const
+  std::string PhysicalDevice::name() const noexcept
   {
     return pimpl_->name();
   }
 
-  PhysicalDeviceType PhysicalDevice::type() const
+  PhysicalDeviceType PhysicalDevice::type() const noexcept
   {
     return pimpl_->type();
   }

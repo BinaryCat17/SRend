@@ -36,9 +36,52 @@ namespace vulkan
   // FramebufferImpl --------------------------------------------------------------------------------------------------
 
   FramebufferImpl::FramebufferImpl(
-      std::shared_ptr<DeviceImpl> device, FramebufferCreateFlags const&, std::vector<Image> const& images)
-      : device_(std::move(device)), vkFramebuffer_(createVkFramebuffer(device_, images))
+      std::shared_ptr<DeviceImpl> device, FramebufferCreateFlags const&)
+      : device_(std::move(device))
   {
+  }
+
+  void FramebufferImpl::addAttachment(Image const& image)
+  {
+    images_.push_back(image);
+    needUpdate_ = true;
+  }
+
+  void FramebufferImpl::setAttachment(utils::IndexT index, Image const& image)
+  {
+    images_[index] = image;
+    needUpdate_ = true;
+  }
+
+  void FramebufferImpl::update()
+  {
+    if (needUpdate_)
+    {
+      vkFramebuffer_ = createVkFramebuffer(device_, images_);
+      needUpdate_ = false;
+    }
+  }
+
+  // Framebuffer ------------------------------------------------------------------------------------------------------
+
+  Framebuffer::Framebuffer(Device const& device, FramebufferCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<FramebufferImpl>(device.getImpl(), createFlags))
+  {
+  }
+
+  void Framebuffer::addAttachment(Image const& image)
+  {
+    pimpl_->addAttachment(image);
+  }
+
+  void Framebuffer::setAttachment(utils::IndexT index, Image const& image)
+  {
+    pimpl_->setAttachment(index, image);
+  }
+
+  void Framebuffer::removeAttachment(utils::IndexT index)
+  {
+    pimpl_->removeAttachment(index);
   }
 
 }  // namespace vulkan

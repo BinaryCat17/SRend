@@ -10,73 +10,77 @@ namespace vulkan
   {
   }
 
+  ShaderStateImpl::~ShaderStateImpl()
+  {
+    vezDestroyPipeline(device_->getVkDevice(), vkPipeline_);
+  }
+
   void ShaderStateImpl::addShader(Shader const& shader)
   {
     needUpdate_ = true;
-    shaders_.push_back(ShaderInfo{shader});
+    shaders_.insert({shader, ShaderInfo()});
   }
 
-  void ShaderStateImpl::setShaderEntryPoint(utils::IndexT index, std::string const& name)
+  void ShaderStateImpl::setEntryPoint(Shader const& shader, std::string const& name)
   {
     needUpdate_ = true;
-    shaders_[index].entryPoint = name;
+    shaders_.at(shader).entryPoint = name;
   }
 
-  void ShaderStateImpl::setShaderSpecConstant(
-      utils::IndexT index, utils::IndexT constantId, utils::SharedAnyPtr const& pData)
+  std::string ShaderStateImpl::getEntryPoint(Shader const& shader) const
   {
-    needUpdate_ = true;
-    shaders_[index].specConstants.insert({constantId, pData});
-  }
-
-  void ShaderStateImpl::removeShader(utils::IndexT index)
-  {
-    needUpdate_ = true;
-    shaders_.erase(shaders_.begin() + index);
+    return shaders_.at(shader).entryPoint;
   }
 
   void ShaderStateImpl::update()
   {
-    std::vector<VezPipelineShaderStageCreateInfo> stages;
-
     if (needUpdate_)
     {
-      stages.resize(shaders_.size());
-      for (utils::IndexT i = 0; i != stages.size(); ++i)
+      std::vector<VezPipelineShaderStageCreateInfo> stages;
+      for (auto const& p : shaders_)
       {
-        stages[i].module = shaders_[i].shader.getImpl()->getVkShaderModule();
-        stages[i].pEntryPoint = shaders_[i].entryPoint.data();
+        VezPipelineShaderStageCreateInfo createInfo = {};
+
+        createInfo.module = p.first.getImpl()->getVkShaderModule();
+        createInfo.pEntryPoint = p.second.entryPoint.data();
+
+        stages.push_back(createInfo);
       }
+
+      VezGraphicsPipelineCreateInfo createInfo = {};
+      createInfo.stageCount = static_cast<uint32_t>(stages.size());
+      createInfo.pStages = stages.data();
+
+      checkResult(vezCreateGraphicsPipeline(device_->getVkDevice(), &createInfo, &vkPipeline_));
     }
-
-    VezGraphicsPipelineCreateInfo createInfo = {};
-    createInfo.stageCount = static_cast<uint32_t>(stages.size());
-    createInfo.pStages = stages.data();
-
-    checkResult(vezCreateGraphicsPipeline(device_->getVkDevice(), &createInfo, &vkPipeline_));
+    needUpdate_ = false;
   }
 
   // ShaderState ------------------------------------------------------------------------------------------------------
+
+  ShaderState::ShaderState(Device const& device, ShaderStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<ShaderStateImpl>(device.getImpl(), createFlags))
+  {
+  }
 
   void ShaderState::addShader(Shader const& shader)
   {
     pimpl_->addShader(shader);
   }
 
-  void ShaderState::setShaderEntryPoint(utils::IndexT index, std::string const& name)
+  void ShaderState::removeShader(Shader const& shader)
   {
-    pimpl_->setShaderEntryPoint(index, name);
+    pimpl_->removeShader(shader);
   }
 
-  void ShaderState::setShaderSpecConstant(
-      utils::IndexT index, utils::IndexT constantId, utils::SharedAnyPtr const& pData)
+  void ShaderState::setEntryPoint(Shader const& shader, std::string const& name)
   {
-    pimpl_->setShaderSpecConstant(index, constantId, pData);
+    pimpl_->setEntryPoint(shader, name);
   }
 
-  void ShaderState::removeShader(utils::IndexT index)
+  [[nodiscard]] std::string ShaderState::getEntryPoint(Shader const& shader) const
   {
-    pimpl_->removeShader(index);
+    return pimpl_->getEntryPoint(shader);
   }
 
 }  // namespace vulkan

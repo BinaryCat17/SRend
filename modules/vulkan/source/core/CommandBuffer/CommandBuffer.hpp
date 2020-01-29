@@ -8,7 +8,7 @@ namespace vulkan
   class CommandBufferImpl
   {
    public:
-    explicit CommandBufferImpl(std::shared_ptr<DeviceImpl> device, vk::CommandBuffer vkCommandBuffer);
+    explicit CommandBufferImpl(std::shared_ptr<DeviceImpl> device, vk::CommandBuffer vkCommandBuffer, vk::Queue queue);
 
     CommandBufferImpl(CommandBufferImpl const&) = delete;
 
@@ -30,13 +30,14 @@ namespace vulkan
       return vkCommandBuffer_;
     }
 
+    [[nodiscard]] vk::Queue getVkQueue() const
+    {
+      return queue_;
+    }
+
     void begin(CommandBufferBeginFlags const& beginFlags);
 
-    void end();
-
     void beginRender(Framebuffer const& framebuffer, RenderPass const& renderPass);
-
-    void endRender();
 
     // Graphic commands
 
@@ -66,6 +67,10 @@ namespace vulkan
 
     void bindImage(Image const& image, Sampler const& sampler, BindingInfo const& bindingInfo);
 
+    void bindVertexBuffer(Buffer const& buffer);
+
+    void bindIndexBuffer(Buffer const& buffer, IndexType indexType);
+
     // Transfer commands
 
     void copyBuffer(Buffer const& srcBuffer, utils::OffsetT srcOffset, Buffer const& dstBuffer,
@@ -79,9 +84,20 @@ namespace vulkan
         utils::SizeT bufferImageHeight, Image const& image, ImageSubResourceRange const& imageSubResource,
         utils::Offset3D const& imageOffset, utils::Extent3D const& imageExtent);
 
+    void endRenderPass()
+    {
+      if (inRenderPass_)
+      {
+        vezCmdEndRenderPass();
+      }
+      inRenderPass_ = false;
+    }
+
    private:
     std::shared_ptr<DeviceImpl> device_;
     vk::CommandBuffer vkCommandBuffer_;
+    vk::Queue queue_;
+    bool inRenderPass_ = false;
   };
 
 }  // namespace vulkan

@@ -25,6 +25,9 @@ namespace vulkan
       case Format::R32G32B32A32Sfloat:
         return sizeof(float) * 4;
 
+      case Format::R8G8B8A8Unorm:
+        return sizeof(uint32_t);
+
       default:
         throw std::runtime_error("undefined format");
     }
@@ -34,11 +37,13 @@ namespace vulkan
       std::vector<vk::VertexInputBindingDescription>& bindings,
       std::vector<vk::VertexInputAttributeDescription>& attributes)
   {
-    bindings.emplace_back(bindingInfo.first, bindingInfo.second.stride, toVkVertexInputRate(bindingInfo.second.rate));
+    bindings.emplace_back(static_cast<uint32_t>(bindingInfo.first), static_cast<uint32_t>(bindingInfo.second.stride),
+        toVkVertexInputRate(bindingInfo.second.rate));
 
     for (auto const& attrib : bindingInfo.second.attributes)
     {
-      attributes.emplace_back(attrib.first, bindingInfo.first, toVkFormat(attrib.second.format), attrib.second.offset);
+      attributes.emplace_back(static_cast<uint32_t>(attrib.first), static_cast<uint32_t>(bindingInfo.first),
+          static_cast<vk::Format>(attrib.second.format), static_cast<uint32_t>(attrib.second.offset));
     }
   }
 
@@ -50,11 +55,13 @@ namespace vulkan
 
     for (auto const& attrib : bindingInfo.second.attributes)
     {
-      attributes.emplace_back(attrib.first, bindingInfo.first, toVkFormat(attrib.second.format), stride);
+      attributes.emplace_back(static_cast<uint32_t>(attrib.first), static_cast<uint32_t>(bindingInfo.first),
+          static_cast<vk::Format>(attrib.second.format), static_cast<uint32_t>(stride));
       stride += formatSize(attrib.second.format);
     }
 
-    bindings.emplace_back(bindingInfo.first, stride, toVkVertexInputRate(bindingInfo.second.rate));
+    bindings.emplace_back(static_cast<uint32_t>(bindingInfo.first), static_cast<uint32_t>(stride),
+        toVkVertexInputRate(bindingInfo.second.rate));
   }
 
   // VertexInputStateImpl ---------------------------------------------------------------------------------------------
@@ -172,6 +179,11 @@ namespace vulkan
 
   // VertexInputState -------------------------------------------------------------------------------------------------
 
+  VertexInputState::VertexInputState(Device const& device, VertexInputStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<VertexInputStateImpl>(device.getImpl(), createFlags))
+  {
+  }
+
   void VertexInputState::addInputBinding(VertexInputRate rate)
   {
     pimpl_->addInputBinding(rate);
@@ -208,12 +220,12 @@ namespace vulkan
     pimpl_->setInputAttribute(binding, location, format, offset);
   }
 
-  void VertexInputState::eraseInputBinding(utils::IndexT binding)
+  void VertexInputState::removeInputBinding(utils::IndexT binding)
   {
     pimpl_->eraseInputBinding(binding);
   }
 
-  void VertexInputState::eraseInputAttribute(utils::IndexT binding, utils::IndexT location)
+  void VertexInputState::removeInputAttribute(utils::IndexT binding, utils::IndexT location)
   {
     pimpl_->eraseInputAttribute(binding, location);
   }

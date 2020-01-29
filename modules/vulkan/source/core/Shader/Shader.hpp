@@ -31,7 +31,7 @@ namespace vulkan
       return vkShaderModule_;
     }
 
-    void load(std::filesystem::path const& path);
+    void load(ShaderType type, std::filesystem::path const& path);
 
     void load(ShaderType type, std::vector<std::string> const& code);
 

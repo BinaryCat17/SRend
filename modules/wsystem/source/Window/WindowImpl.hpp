@@ -18,6 +18,11 @@ namespace wsystem
 
     ~WindowImpl();
 
+    [[nodiscard]] NativeHandle getNativeHandle() const
+    {
+      return pbase_->getNativeHandle();
+    }
+
     [[nodiscard]] std::shared_ptr<BaseWindow> getBase() const
     {
       return pbase_;

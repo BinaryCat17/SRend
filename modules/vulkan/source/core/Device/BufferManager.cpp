@@ -45,9 +45,27 @@ namespace vulkan
   // BufferManager ----------------------------------------------------------------------------------------------------
 
   BufferManager::BufferManager(vk::Device device, vk::BufferUsageFlags const& usage, VezMemoryFlags memoryType,
-      utils::SizeT blockSize, utils::allocator::Allocator allocator)
-      : device_(device), usage_(usage), memoryType_(memoryType), blockSize_(blockSize), allocator_(std::move(allocator))
+      utils::SizeT blockSize)
+      : device_(device), usage_(usage), memoryType_(memoryType), blockSize_(blockSize)
   {
+  }
+
+  std::pair<vk::Buffer, utils::allocator::Allocation> BufferManager::allocate(
+      utils::SizeT size, utils::AlignmentT alignment)
+  {
+    for (auto& block : bufferBlocks_)
+    {
+      try
+      {
+        return block.allocate(size, alignment);
+      }
+      catch (std::runtime_error const&)
+      {
+      }
+    }
+
+    bufferBlocks_.emplace_back(device_, utils::allocator::Allocator(), blockSize_, usage_, memoryType_);
+    return bufferBlocks_.back().allocate(size, alignment);
   }
 
 }  // namespace vulkan

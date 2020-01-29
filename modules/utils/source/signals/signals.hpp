@@ -2,6 +2,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <utils/utils.hpp>
 
 namespace utils::signals
 {
@@ -47,43 +48,48 @@ namespace utils::signals
    public:
     void connect(Connection<F_T> slot)
     {
-      slots_.push_back(slot);
+      slots_->push_back(slot);
     }
 
     template <typename Slot_T>
     Connection<F_T> connect(Slot_T const &slot)
     {
       Connection<F_T> connection(slot);
-      slots_.push_back(connection);
+      slots_->push_back(connection);
       return connection;
     }
 
     template <typename Slot_T>
     void connectf(Slot_T const &slot)
     {
-      slots_.emplace_back(slot);
+      slots_->emplace_back(slot);
     }
 
     void disconnect(Connection<F_T> slot)
     {
-      auto findIt = std::find(slots_.cbegin(), slots_.cend(), slot);
-      if (findIt != slots_.cend())
+      auto findIt = std::find(slots_->cbegin(), slots_->cend(), slot);
+      if (findIt != slots_->cend())
       {
-        slots_.erase(findIt);
+        slots_->erase(findIt);
       }
     }
 
     template <typename... Types>
     void operator()(Types &&... args) const
     {
-      for (auto slot : slots_)
+      for (auto slot : *slots_)
       {
         slot(args...);
       }
     }
 
+    utils::SizeT size() const
+    {
+      return slots_->size();
+    }
+
    private:
-    std::list<Connection<F_T>> slots_;
+    std::shared_ptr<std::list<Connection<F_T>>> slots_ = std::make_shared<std::list<Connection<F_T>>>();
   };
 
 }  // namespace utils::signals

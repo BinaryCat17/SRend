@@ -1,4 +1,5 @@
 #include "MultisampleState.hpp"
+#include "../../../include/vulkan/core.hpp"
 
 namespace vulkan
 {
@@ -8,44 +9,59 @@ namespace vulkan
 
   // MultisampleState -------------------------------------------------------------------------------------------------
 
-  void MultisampleState::setRasterizationSamples(SampleCountFlagBits sampleCount)
+  void MultisampleState::setRasterizationSamples(SampleCountFlagBits val) noexcept
   {
-    pimpl_->setRasterizationSamples(sampleCount);
+    pimpl_->setRasterizationSamples(val);
   }
 
-  void MultisampleState::enableSampleShading(float minSampleShading)
+  void MultisampleState::setSampleShading(std::optional<float> val) noexcept
   {
-    pimpl_->enableSampleShading(minSampleShading);
+    pimpl_->setSampleShading(val);
   }
 
-  void MultisampleState::disableSampleShading()
+  void MultisampleState::setSampleMask(uint32_t val) noexcept
   {
-    pimpl_->disableSampleShading();
+    pimpl_->setSampleMask(val);
   }
 
-  void MultisampleState::setSampleMask(uint32_t mask)
+  void MultisampleState::setAlphaToCoverage(bool val) noexcept
   {
-    pimpl_->setSampleMask(mask);
+    pimpl_->setAlphaToCoverage(val);
   }
 
-  void MultisampleState::enableAlphaToCoverage()
+  void MultisampleState::setAlphaToOne(bool val) noexcept
   {
-    pimpl_->enableAlphaToCoverage();
+    pimpl_->setAlphaToOne(val);
   }
 
-  void MultisampleState::disableAlphaToCoverage()
+  [[nodiscard]] SampleCountFlagBits MultisampleState::getRasterizationSamples() const noexcept
   {
-    pimpl_->disableAlphaToCoverage();
+    return pimpl_->getRasterizationSamples();
   }
 
-  void MultisampleState::enableAlphaToOne()
+  [[nodiscard]] std::optional<float> MultisampleState::getSampleShading() const noexcept
   {
-    pimpl_->enableAlphaToOne();
+    return pimpl_->getSampleShading();
   }
 
-  void MultisampleState::disableAlphaToOne()
+  [[nodiscard]] uint32_t MultisampleState::getSampleMask() const noexcept
   {
-    pimpl_->disableAlphaToOne();
+    return pimpl_->getSampleMask();
+  }
+
+  [[nodiscard]] bool MultisampleState::getAlphaToCoverage() const noexcept
+  {
+    return pimpl_->getAlphaToCoverage();
+  }
+
+  [[nodiscard]] bool MultisampleState::getAlphaToOne() const noexcept
+  {
+    return pimpl_->getAlphaToOne();
+  }
+
+  MultisampleState::MultisampleState(Device const& device, MultisampleStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<MultisampleStateImpl>(device.getImpl(), createFlags))
+  {
   }
 
 }  // namespace vulkan

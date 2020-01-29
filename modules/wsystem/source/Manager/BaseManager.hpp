@@ -2,11 +2,7 @@
 #include "../Window/BaseWindow.hpp"
 #include "Manager.hpp"
 
-struct VkSurfaceKHR_T;
-typedef VkSurfaceKHR_T* VkSurfaceKHR;
 
-struct VkInstance_T;
-typedef VkInstance_T* VkInstance;
 
 namespace wsystem
 {
@@ -25,9 +21,6 @@ namespace wsystem
     virtual void update() = 0;
 
     virtual std::vector<char const*> getInstanceExtensions() const = 0;
-
-    [[nodiscard]] virtual VkSurfaceKHR createSurface(
-        std::shared_ptr<BaseWindow> const& window, VkInstance instance) const = 0;
   };
 
 }  // namespace wsystem

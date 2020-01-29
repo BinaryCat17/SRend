@@ -16,4 +16,6 @@ namespace utils
 
   std::string strVecToStr(std::vector<std::string> const &vec);
 
+  std::vector<char> readBinaryFile(std::filesystem::path const &path);
+
 }  // namespace utils

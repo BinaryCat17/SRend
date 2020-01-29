@@ -1,10 +1,11 @@
 #pragma once
 #include <utils/debug.hpp>
 #include <utils/utils.hpp>
+#include <variant>
 
 namespace vulkan
 {
-  // Enums ------------------------------------------------------------------------------------------------------------
+  // utils ------------------------------------------------------------------------------------------------------------
 
   // clang-format off
 
@@ -381,7 +382,26 @@ namespace vulkan
     HostToDivice
   };
 
-  // Structs ----------------------------------------------------------------------------------------------------------
+  enum class IndexType
+  {
+    Uint16 = 0,
+    Uint32 = 1,
+  };
+
+  enum class MipMapMode
+  {
+    Nearest = 0,
+    Linear = 1,
+  };
+
+  enum class AddressMode
+  {
+    Repeat = 0,
+    MirroredRepeat = 1,
+    ClampToEdge = 2,
+    ClampToBorder = 3,
+    MirrorClampToEdge = 4,
+  };
 
   struct ComponentMapping
   {
@@ -410,6 +430,141 @@ namespace vulkan
     utils::IndexT set;
   };
 
+  struct DepthClearValue
+  {
+    explicit DepthClearValue(float depthClearValue = 1.0f, unsigned int stencilClearValue = 0)
+        : depthClearValue(depthClearValue), stencilClearValue(stencilClearValue)
+    {
+    }
+
+    float depthClearValue;
+    unsigned stencilClearValue;
+  };
+
+  struct ColorClearValue
+  {
+    explicit ColorClearValue(std::array<float, 4> const& clearValue = {}) : clearValue(clearValue)
+    {
+    }
+
+    std::array<float, 4> const& clearValue;
+  };
+
+  // Global -----------------------------------------------------------------------------------------------------------
+
+  SR_MAKE_BIT_FLAGS(Extensions, {Presentation = 1u << 0u};)
+
+  SR_MAKE_BIT_FLAGS(ValidationLayers, {StandardValidation = 1u << 0u};)
+
+  ExtensionsFlags getSupportedExtensions();
+
+  ValidationLayersFlags getSupportedValidationLayers();
+
+  // PhysicalDevice ---------------------------------------------------------------------------------------------------
+
+  enum class PhysicalDeviceType
+  {
+    Other = 0,
+    IntegratedGpu = 1,
+    DiscreteGpu = 2,
+    VirtualGpu = 3,
+    Cpu = 4,
+  };
+
+  class PhysicalDeviceImpl;
+
+  class PhysicalDevice
+  {
+   public:
+    explicit PhysicalDevice(std::shared_ptr<PhysicalDeviceImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<PhysicalDeviceImpl> const& getImpl() const
+    {
+      return pimpl_;
+    }
+
+    [[nodiscard]] std::string name() const noexcept;
+
+    [[nodiscard]] PhysicalDeviceType type() const noexcept;
+
+   private:
+    std::shared_ptr<PhysicalDeviceImpl> pimpl_;
+  };
+
+  // Application ------------------------------------------------------------------------------------------------------
+
+  SR_MAKE_BIT_FLAGS(ApplicationCreate, {};)
+
+  struct ApplicationInfo
+  {
+    ApplicationInfo() = default;
+
+    ApplicationInfo(std::string appName, std::shared_ptr<utils::Version> appVersion, std::string engineName,
+        std::shared_ptr<utils::Version> engineVersion)
+        : appName(std::move(appName)),
+          appVersion(std::move(appVersion)),
+          engineName(std::move(engineName)),
+          engineVersion(std::move(engineVersion))
+    {
+    }
+
+    std::string appName = "Unknown";
+    std::shared_ptr<utils::Version> appVersion = std::make_shared<utils::VersionList>(0u, 0u, 0u);
+    std::string engineName = "Unknown";
+    std::shared_ptr<utils::Version> engineVersion = std::make_shared<utils::VersionList>(0u, 0u, 0u);
+  };
+
+  class ApplicationImpl;
+
+  class Application
+  {
+   public:
+    explicit Application(std::shared_ptr<ApplicationImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<ApplicationImpl> const& getImpl() const
+    {
+      return pimpl_;
+    }
+
+    explicit Application(ApplicationCreateFlags const& createFlags, ApplicationInfo const& appInfo,
+        ExtensionsFlags const& extensions = {}, ValidationLayersFlags const& layers = {},
+        utils::debug::Messenger const& messenger = {});
+
+    [[nodiscard]] std::vector<PhysicalDevice> getSupportedPhysicalDevices() const;
+
+   private:
+    std::shared_ptr<ApplicationImpl> pimpl_;
+  };
+
+  // Device -----------------------------------------------------------------------------------------------------------
+
+  SR_MAKE_BIT_FLAGS(DeviceCreate, {};)
+
+  class DeviceImpl;
+
+  class Device
+  {
+   public:
+    explicit Device(std::shared_ptr<DeviceImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<DeviceImpl> const& getImpl() const
+    {
+      return pimpl_;
+    }
+
+    explicit Device(
+        Application const& application, DeviceCreateFlags const& createFlags, PhysicalDevice const& physicalDevice);
+
+   private:
+    std::shared_ptr<DeviceImpl> pimpl_;
+  };
+
   // Sampler ----------------------------------------------------------------------------------------------------------
 
   // clang-format off
@@ -417,21 +572,6 @@ namespace vulkan
   SR_MAKE_BIT_FLAGS(SamplerCreate, {};)
 
   // clang-format on
-
-  enum class SamplerMipMapMode
-  {
-    Nearest = 0,
-    Linear = 1,
-  };
-
-  enum class SamplerAddressMode
-  {
-    Repeat = 0,
-    MirroredRepeat = 1,
-    ClampToEdge = 2,
-    ClampToBorder = 3,
-    MirrorClampToEdge = 4,
-  };
 
   class SamplerImpl;
 
@@ -447,37 +587,59 @@ namespace vulkan
       return pimpl_;
     }
 
-    void setMagFilter(Filter const& val);
+    explicit Sampler(Device const& device, SamplerCreateFlags const& createFlags = {});
 
-    void setMinFilter(Filter const& val);
+    void setMagFilter(Filter const& val) noexcept;
 
-    void setMipMapMode(SamplerMipMapMode const& val);
+    void setMinFilter(Filter const& val) noexcept;
 
-    void setAddressModeU(SamplerAddressMode const& val);
+    void setMipMapMode(MipMapMode const& val) noexcept;
 
-    void setAddressModeV(SamplerAddressMode const& val);
+    void setAddressModeU(AddressMode const& val) noexcept;
 
-    void setAddressModeW(SamplerAddressMode const& val);
+    void setAddressModeV(AddressMode const& val) noexcept;
 
-    void setMipLodBias(float val);
+    void setAddressModeW(AddressMode const& val) noexcept;
 
-    void enableAnisotropy(float val);
+    void setMipLodBias(float val) noexcept;
 
-    void disableAnisotropy();
+    void setAnisotropy(std::optional<float> val) noexcept;
 
-    void enableCompareOp(CompareOp val);
+    void setCompareOp(std::optional<CompareOp> val) noexcept;
 
-    void disableCompareOp();
+    void setMinLod(float val) noexcept;
 
-    void setMinLod(float val);
+    void setMaxLod(float val) noexcept;
 
-    void setMaxLod(float val);
+    void setBorderColor(BorderColor val) noexcept;
 
-    void setBorderColor(BorderColor val);
+    void setUnnormalizedCoordinates(bool val) noexcept;
 
-    void enableUnnormalizedCoordinates();
+    [[nodiscard]] Filter getMagFilter() const noexcept;
 
-    void disableUnnormalizedCoordinates();
+    [[nodiscard]] Filter getMinFilter() const noexcept;
+
+    [[nodiscard]] MipMapMode getMipMapMode() const noexcept;
+
+    [[nodiscard]] AddressMode getAddressModeU() const noexcept;
+
+    [[nodiscard]] AddressMode getAddressModeV() const noexcept;
+
+    [[nodiscard]] AddressMode getAddressModeW() const noexcept;
+
+    [[nodiscard]] float getMipLodBias() const noexcept;
+
+    [[nodiscard]] std::optional<float> getAnisotropy() const noexcept;
+
+    [[nodiscard]] std::optional<CompareOp> getCompareOp() const noexcept;
+
+    [[nodiscard]] float getMinLod() const noexcept;
+
+    [[nodiscard]] float getMaxLod() const noexcept;
+
+    [[nodiscard]] BorderColor getBorderColor() const noexcept;
+
+    [[nodiscard]] bool getUnnormalizedCoordinates() const noexcept;
 
    private:
     std::shared_ptr<SamplerImpl> pimpl_;
@@ -533,13 +695,20 @@ namespace vulkan
       return pimpl_;
     }
 
-    [[nodiscard]] Format getFormat() const;
+    explicit Image(Device const& device, ImageCreateFlags const& createFlags, utils::Extent3D const& extent,
+        Format format, ImageUsageFlags const& usage, utils::SizeT mipLevelsCount = 1, utils::SizeT arrayLayersCount = 1,
+        SampleCountFlagBits sampleCount = SampleCountFlagBits::e1, MemoryType memoryType = MemoryType::DeviceLocal);
 
-    [[nodiscard]] utils::Extent3D getExtent() const;
+    explicit Image(Device const& device, Image const& image, ImageSubResourceRange const& range,
+        std::optional<Format> const& formatView, ComponentMapping const& components);
 
-    [[nodiscard]] ImageSubResourceRange getSubResourceRange() const;
+    [[nodiscard]] Format getFormat() const noexcept;
 
-    [[nodiscard]] SampleCountFlagBits getSampleCount() const;
+    [[nodiscard]] utils::Extent3D getExtent() const noexcept;
+
+    [[nodiscard]] ImageSubResourceRange getSubResourceRange() const noexcept;
+
+    [[nodiscard]] SampleCountFlagBits getSampleCount() const noexcept;
 
    private:
     std::shared_ptr<ImageImpl> pimpl_;
@@ -552,16 +721,52 @@ namespace vulkan
   SR_MAKE_BIT_FLAGS(BufferCreate, {};)
 
   SR_MAKE_BIT_FLAGS(BufferUsage, {
-    TransferSrcBit = 0x00000001,
-    TransferDstBit = 0x00000002,
-    UniformTexelBufferBit = 0x00000004,
-    StorageTexelBufferBit = 0x00000008,
-    UniformBufferBit = 0x00000010,
-    StorageBufferBit = 0x00000020,
-    IndexBufferBit = 0x00000040,
-    VertexBufferBit = 0x00000080,
-    IndirectBufferBit = 0x00000100,
+    TransferSrc = 0x00000001,
+    TransferDst = 0x00000002,
+    UniformTexelBuffer = 0x00000004,
+    StorageTexelBuffer = 0x00000008,
+    UniformBuffer = 0x00000010,
+    StorageBuffer = 0x00000020,
+    IndexBuffer = 0x00000040,
+    VertexBuffer = 0x00000080,
+    IndirectBuffer = 0x00000100,
   };)
+
+  class BufferMappedDataImpl;
+
+  class BufferMappedData
+  {
+   public:
+    explicit BufferMappedData(std::shared_ptr<BufferMappedDataImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<BufferMappedDataImpl> const& getImpl() const
+    {
+      return pimpl_;
+    }
+
+    [[nodiscard]] void *pData() noexcept;
+
+    [[nodiscard]] void const* pData() const noexcept;
+
+    void unmap();
+
+    template<typename T>
+    T* pT() noexcept
+    {
+      return reinterpret_cast<T*>(pData());
+    }
+
+    template<typename T>
+    T const* pT() const noexcept
+    {
+      return reinterpret_cast<T const*>(pData());
+    }
+
+   private:
+    std::shared_ptr<BufferMappedDataImpl> pimpl_;
+  };
 
   // clang-format on
 
@@ -579,11 +784,12 @@ namespace vulkan
       return pimpl_;
     }
 
-    [[nodiscard]] utils::SizeT getSize() const;
+    explicit Buffer(Device const& device, BufferCreateFlags const& createFlags, BufferUsageFlags const& usage,
+        utils::SizeT size, MemoryType memoryType = MemoryType::DeviceLocal);
 
-    [[nodiscard]] void* mapMemory(utils::SizeT size, utils::OffsetT offset = 0);
+    [[nodiscard]] utils::SizeT getSize() const noexcept;
 
-    void unmapMemory();
+    [[nodiscard]] BufferMappedData mapMemory(utils::SizeT size, utils::OffsetT offset = 0);
 
    private:
     std::shared_ptr<BufferImpl> pimpl_;
@@ -599,11 +805,11 @@ namespace vulkan
 
   enum class ShaderType
   {
-    Vertex = 0x00000004,
-    TessellationControl = 0x00000010,
-    TessellationEvaluation = 0x00000020,
-    Geometry = 0x00000040,
-    Fragment = 0x00000080,
+    Vertex = 0x00000001,
+    TessellationControl = 0x00000002,
+    TessellationEvaluation = 0x00000004,
+    Geometry = 0x00000008,
+    Fragment = 0x00000010,
   };
 
   class ShaderImpl;
@@ -615,14 +821,32 @@ namespace vulkan
     {
     }
 
-    [[nodiscard]] std::shared_ptr<ShaderImpl> getImpl() const
+    [[nodiscard]] std::shared_ptr<ShaderImpl> const& getImpl() const
     {
       return pimpl_;
     }
 
-    void load(std::filesystem::path const& path);
+    explicit Shader(Device const& device, ShaderCreateFlags const& createFlags = {});
+
+    void load(ShaderType type, std::filesystem::path const& path);
 
     void load(ShaderType type, std::vector<std::string> const& code);
+    friend bool operator<(Shader const& lhs, Shader const& rhs)
+    {
+      return lhs.pimpl_ < rhs.pimpl_;
+    }
+    friend bool operator>(Shader const& lhs, Shader const& rhs)
+    {
+      return rhs < lhs;
+    }
+    friend bool operator<=(Shader const& lhs, Shader const& rhs)
+    {
+      return !(rhs < lhs);
+    }
+    friend bool operator>=(Shader const& lhs, Shader const& rhs)
+    {
+      return !(lhs < rhs);
+    }
 
    private:
     std::shared_ptr<ShaderImpl> pimpl_;
@@ -650,13 +874,15 @@ namespace vulkan
       return pimpl_;
     }
 
+    explicit ShaderState(Device const& device, ShaderStateCreateFlags const& createFlags = {});
+
     void addShader(Shader const& shader);
 
-    void setShaderEntryPoint(utils::IndexT index, std::string const& name);
+    void removeShader(Shader const& shader);
 
-    void setShaderSpecConstant(utils::IndexT index, utils::IndexT constantId, utils::SharedAnyPtr const& pData);
+    void setEntryPoint(Shader const& shader, std::string const& name);
 
-    void removeShader(utils::IndexT index);
+    [[nodiscard]] std::string getEntryPoint(Shader const& shader) const;
 
    private:
     std::shared_ptr<ShaderStateImpl> pimpl_;
@@ -690,6 +916,8 @@ namespace vulkan
       return pimpl_;
     }
 
+    explicit VertexInputState(Device const& device, VertexInputStateCreateFlags const& createFlags = {});
+
     void addInputBinding(VertexInputRate rate);
 
     void addInputBinding(utils::SizeT stride, VertexInputRate rate);
@@ -704,9 +932,9 @@ namespace vulkan
 
     void setInputAttribute(utils::IndexT binding, utils::IndexT location, Format format, utils::OffsetT offset);
 
-    void eraseInputBinding(utils::IndexT binding);
+    void removeInputBinding(utils::IndexT binding);
 
-    void eraseInputAttribute(utils::IndexT binding, utils::IndexT location);
+    void removeInputAttribute(utils::IndexT binding, utils::IndexT location);
 
    private:
     std::shared_ptr<VertexInputStateImpl> pimpl_;
@@ -734,11 +962,15 @@ namespace vulkan
       return pimpl_;
     }
 
-    void setPrimitiveTopology(PrimitiveTopology topology);
+    explicit InputAssemblyState(Device const& device, InputAssemblyStateCreateFlags const& createFlags = {});
 
-    void enablePrimitiveRestart();
+    void setPrimitiveTopology(PrimitiveTopology topology) noexcept;
 
-    void disablePrimitiveRestart();
+    void setPrimitiveRestart(bool val) noexcept;
+
+    [[nodiscard]] PrimitiveTopology getPrimitiveTopology() const noexcept;
+
+    [[nodiscard]] bool getPrimitiveRestart() const noexcept;
 
    private:
     std::shared_ptr<InputAssemblyStateImpl> pimpl_;
@@ -766,23 +998,31 @@ namespace vulkan
       return pimpl_;
     }
 
-    void enableDepthClamp();
+    explicit RasterizationState(Device const& device, RasterizationStateCreateFlags const& createFlags = {});
 
-    void disableDepthClamp();
+    void setDepthClamp(bool val) noexcept;
 
-    void enableRasterizerDiscard();
+    void setRasterizerDiscard(bool val) noexcept;
 
-    void disableRasterizerDiscard();
+    void setDepthBias(bool val) noexcept;
 
-    void enableDepthBias();
+    void setPolygonMode(PolygonMode mode) noexcept;
 
-    void disableDepthBias();
+    void setCullMode(CullModeFlags const& cullMode) noexcept;
 
-    void setPolygonMode(PolygonMode mode);
+    void setFrontFace(FrontFace frontFace) noexcept;
 
-    void setCullMode(CullModeFlags const& cullMode);
+    [[nodiscard]] bool getDepthClamp() const noexcept;
 
-    void setFrontFace(FrontFace frontFace);
+    [[nodiscard]] bool getRasterizerDiscard() const noexcept;
+
+    [[nodiscard]] bool getDepthBias() const noexcept;
+
+    [[nodiscard]] PolygonMode getPolygonMode() const noexcept;
+
+    [[nodiscard]] CullModeFlags getCullMode() const noexcept;
+
+    [[nodiscard]] FrontFace getFrontFace() const noexcept;
 
    private:
     std::shared_ptr<RasterizationStateImpl> pimpl_;
@@ -810,21 +1050,27 @@ namespace vulkan
       return pimpl_;
     }
 
-    void setRasterizationSamples(SampleCountFlagBits sampleCount);
+    explicit MultisampleState(Device const& device, MultisampleStateCreateFlags const& createFlags = {});
 
-    void enableSampleShading(float minSampleShading);
+    void setRasterizationSamples(SampleCountFlagBits val) noexcept;
 
-    void disableSampleShading();
+    void setSampleShading(std::optional<float> val) noexcept;
 
-    void setSampleMask(uint32_t mask);
+    void setSampleMask(uint32_t val) noexcept;
 
-    void enableAlphaToCoverage();
+    void setAlphaToCoverage(bool val) noexcept;
 
-    void disableAlphaToCoverage();
+    void setAlphaToOne(bool val) noexcept;
 
-    void enableAlphaToOne();
+    [[nodiscard]] SampleCountFlagBits getRasterizationSamples() const noexcept;
 
-    void disableAlphaToOne();
+    [[nodiscard]] std::optional<float> getSampleShading() const noexcept;
+
+    [[nodiscard]] uint32_t getSampleMask() const noexcept;
+
+    [[nodiscard]] bool getAlphaToCoverage() const noexcept;
+
+    [[nodiscard]] bool getAlphaToOne() const noexcept;
 
    private:
     std::shared_ptr<MultisampleStateImpl> pimpl_;
@@ -878,26 +1124,70 @@ namespace vulkan
       return pimpl_;
     }
 
-    void enableDepthTest();
+    explicit DepthStencilState(Device const& device, DepthStencilStateCreateFlags const& createFlags = {});
 
-    void disableDepthTest();
+    void setDepthTest(bool val) noexcept;
 
-    void enableDepthWrite();
+    void setDepthWrite(bool val) noexcept;
 
-    void disableDepthWrite();
+    void setDepthCompareOp(CompareOp op) noexcept;
 
-    void setDepthCompareOp(CompareOp op);
+    void setDepthBoundsTest(bool val) noexcept;
 
-    void enableDepthBoundsTest();
+    void setBackStencilOp(StencilOpInfo const& state) noexcept;
 
-    void disableDepthBoundsTest();
+    void setFrontStencilOp(StencilOpInfo const& state) noexcept;
 
-    void setBackStencilOp(StencilOpInfo const& state);
+    [[nodiscard]] bool getDepthTest() const noexcept;
 
-    void setFrontStencilOp(StencilOpInfo const& state);
+    [[nodiscard]] bool getDepthWrite() const noexcept;
+
+    [[nodiscard]] CompareOp getDepthCompareOp() const noexcept;
+
+    [[nodiscard]] bool getDepthBoundsTest() const noexcept;
+
+    [[nodiscard]] StencilOpInfo getBackStencilOp() const noexcept;
+
+    [[nodiscard]] StencilOpInfo getFrontStencilOp() const noexcept;
 
    private:
     std::shared_ptr<DepthStencilStateImpl> pimpl_;
+  };
+
+  // RenderPass -------------------------------------------------------------------------------------------------------
+
+  // clang-format off
+
+  SR_MAKE_BIT_FLAGS(RenderPassCreate, {};)
+
+  // clang-format on
+
+  class RenderPassImpl;
+
+  class RenderPass
+  {
+   public:
+    explicit RenderPass(std::shared_ptr<RenderPassImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<RenderPassImpl> getImpl() const
+    {
+      return pimpl_;
+    }
+
+    explicit RenderPass(Device const& device, RenderPassCreateFlags const& createFlags = {});
+
+    void addAttachment(std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+        AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
+
+    void setAttachment(utils::IndexT index, std::variant<ColorClearValue, DepthClearValue> const& clearValue,
+        AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
+
+    void removeAttachment(utils::IndexT index);
+
+   private:
+    std::shared_ptr<RenderPassImpl> pimpl_;
   };
 
   // ColorBlendState --------------------------------------------------------------------------------------------------
@@ -908,9 +1198,9 @@ namespace vulkan
 
   // clang-format on
 
-  struct ColorBlendAttachmentInfo
+  struct ColorBlendAttachment
   {
-    ColorBlendAttachmentInfo(BlendFactor srcColorBlendFactor = BlendFactor::One,
+    explicit ColorBlendAttachment(BlendFactor srcColorBlendFactor = BlendFactor::One,
         BlendFactor dstColorBlendFactor = BlendFactor::Zero, BlendOp colorBlendOp = BlendOp::Add,
         BlendFactor srcAlphaBlendFactor = BlendFactor::One, BlendFactor dstAlphaBlendFactor = BlendFactor::Zero,
         BlendOp alphaBlendOp = BlendOp::Add)
@@ -945,84 +1235,24 @@ namespace vulkan
       return pimpl_;
     }
 
-    void addColorBlendAttachment(std::optional<ColorBlendAttachmentInfo> const& info,
+    explicit ColorBlendState(Device const& device, ColorBlendStateCreateFlags const& createFlags = {});
+
+    void addAttachment(std::optional<ColorBlendAttachment> const& attachment,
         ColorComponentFlags colorWriteMask = ColorComponentFlagBits::R | ColorComponentFlagBits::G |
                                              ColorComponentFlagBits::B | ColorComponentFlagBits::A);
 
-    void setColorBlendAttachment(utils::IndexT index, std::optional<ColorBlendAttachmentInfo> const& info,
+    void setAttachment(utils::IndexT index, std::optional<ColorBlendAttachment> const& attachment,
         ColorComponentFlags colorWriteMask = ColorComponentFlagBits::R | ColorComponentFlagBits::G |
                                              ColorComponentFlagBits::B | ColorComponentFlagBits::A);
 
-    void removeColorBlendAttachment(utils::IndexT index);
+    void removeAttachment(utils::IndexT index);
+
+    void setLogicOp(std::optional<LogicOp> val) noexcept;
+
+    [[nodiscard]] std::optional<LogicOp> getLogicOp() const noexcept;
 
    private:
     std::shared_ptr<ColorBlendStateImpl> pimpl_;
-  };
-
-  // ViewportState ----------------------------------------------------------------------------------------------------
-
-  // clang-format off
-
-  SR_MAKE_BIT_FLAGS(ViewportStateCreate, {};)
-
-  // clang-format on
-
-  class ViewportStateImpl;
-
-  class ViewportState
-  {
-   public:
-    explicit ViewportState(std::shared_ptr<ViewportStateImpl> pimpl) : pimpl_(std::move(pimpl))
-    {
-    }
-
-    [[nodiscard]] std::shared_ptr<ViewportStateImpl> getImpl() const
-    {
-      return pimpl_;
-    }
-
-    void addViewport(utils::Viewport const& viewport, utils::Rect2D const& scissor);
-
-    void setViewport(utils::IndexT index, utils::Viewport const& viewport);
-
-    void setScissor(utils::IndexT index, utils::Rect2D const& scissor);
-
-    void removeViewport(utils::IndexT index);
-
-   private:
-    std::shared_ptr<ViewportStateImpl> pimpl_;
-  };
-
-  // RenderPass -------------------------------------------------------------------------------------------------------
-
-  // clang-format off
-
-  SR_MAKE_BIT_FLAGS(RenderPassCreate, {};)
-
-  // clang-format on
-
-  class RenderPassImpl;
-
-  class RenderPass
-  {
-   public:
-    explicit RenderPass(std::shared_ptr<RenderPassImpl> pimpl) : pimpl_(std::move(pimpl))
-    {
-    }
-
-    [[nodiscard]] std::shared_ptr<RenderPassImpl> getImpl() const
-    {
-      return pimpl_;
-    }
-
-    void addColorAttachment(std::array<float, 4> const& clearValue = {0, 0, 0, 0},
-        AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
-
-    void addDepthAttachment(float depthClearValue = 1.0f, unsigned stencilClearValue = 0,
-        AttachmentLoadOp loadOp = AttachmentLoadOp::Clear, AttachmentStoreOp store = AttachmentStoreOp::Store);
-
-   private:
-    std::shared_ptr<RenderPassImpl> pimpl_;
   };
 
   // Framebuffer ------------------------------------------------------------------------------------------------------
@@ -1047,11 +1277,138 @@ namespace vulkan
       return pimpl_;
     }
 
+    explicit Framebuffer(Device const& device, FramebufferCreateFlags const& createFlags = {});
+
+    void addAttachment(Image const& image);
+
+    void setAttachment(utils::IndexT index, Image const& image);
+
+    void removeAttachment(utils::IndexT index);
+
    private:
     std::shared_ptr<FramebufferImpl> pimpl_;
   };
 
-  // Semaphore --------------------------------------------------------------------------------------------------------
+  // Viewport ---------------------------------------------------------------------------------------------------------
+
+  // clang-format off
+
+  SR_MAKE_BIT_FLAGS(ViewportCreate, {};)
+
+  // clang-format on
+
+  class ViewportImpl;
+
+  class Viewport
+  {
+   public:
+    explicit Viewport(std::shared_ptr<ViewportImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<ViewportImpl> const& getImpl() const
+    {
+      return pimpl_;
+    }
+
+    explicit Viewport(Device const& device, ViewportCreateFlags const& createFlags = {});
+
+    void setExtent(utils::Extent2Df const& val) noexcept;
+
+    void setPosition(utils::Position2Df const& val) noexcept;
+
+    void setMinDepth(float val) noexcept;
+
+    void setMaxDepth(float val) noexcept;
+
+    void setViewport(utils::Viewport const& val) noexcept;
+
+    [[nodiscard]] utils::Extent2Df getExtent() const noexcept;
+
+    [[nodiscard]] utils::Position2Df getPosition() const noexcept;
+
+    [[nodiscard]] float getMinDepth() const noexcept;
+
+    [[nodiscard]] float getMaxDepth() const noexcept;
+
+    [[nodiscard]] utils::Viewport getViewport() const noexcept;
+
+    friend bool operator<(Viewport const& lhs, Viewport const& rhs)
+    {
+      return lhs.pimpl_ < rhs.pimpl_;
+    }
+    friend bool operator>(Viewport const& lhs, Viewport const& rhs)
+    {
+      return rhs < lhs;
+    }
+    friend bool operator<=(Viewport const& lhs, Viewport const& rhs)
+    {
+      return !(rhs < lhs);
+    }
+    friend bool operator>=(Viewport const& lhs, Viewport const& rhs)
+    {
+      return !(lhs < rhs);
+    }
+
+   private:
+    std::shared_ptr<ViewportImpl> pimpl_;
+  };
+
+  // ViewportState ----------------------------------------------------------------------------------------------------
+
+  // clang-format off
+
+  SR_MAKE_BIT_FLAGS(ViewportStateCreate, {};)
+
+  // clang-format on
+
+  class ViewportStateImpl;
+
+  class ViewportState
+  {
+   public:
+    explicit ViewportState(std::shared_ptr<ViewportStateImpl> pimpl) : pimpl_(std::move(pimpl))
+    {
+    }
+
+    [[nodiscard]] std::shared_ptr<ViewportStateImpl> getImpl() const
+    {
+      return pimpl_;
+    }
+
+    explicit ViewportState(Device const& device, ViewportStateCreateFlags const& createFlags = {});
+
+    void addViewport(Viewport const& viewport);
+
+    void removeViewport(Viewport const& viewport);
+
+    void setScissor(Viewport const& viewport, utils::Rect2D const& scissor) noexcept;
+
+    [[nodiscard]] utils::Rect2D getScissor(Viewport const& viewport) noexcept;
+
+   private:
+    std::shared_ptr<ViewportStateImpl> pimpl_;
+  };
+
+  // CommandBuffer ----------------------------------------------------------------------------------------------------
+
+  // clang-format off
+
+  SR_MAKE_BIT_FLAGS(CommandBufferCreate, {};)
+
+  SR_MAKE_BIT_FLAGS(CommandBufferBegin, {
+    OneTimeSubmit = 0x00000001,
+    SimultaneousUse = 0x00000004
+  };)
+
+  // clang-format on
+
+  enum class CommandBufferType
+  {
+    Transfer,
+    Graphic,
+    Compute
+  };
 
   class SemaphoreImpl;
 
@@ -1071,19 +1428,6 @@ namespace vulkan
     std::shared_ptr<SemaphoreImpl> pimpl_;
   };
 
-  // CommandBuffer ----------------------------------------------------------------------------------------------------
-
-  // clang-format off
-
-  SR_MAKE_BIT_FLAGS(CommandBufferCreate, {};)
-
-  SR_MAKE_BIT_FLAGS(CommandBufferBegin, {
-    OneTimeSubmit = 0x00000001,
-    SimultaneousUse = 0x00000004
-  };)
-
-  // clang-format on
-
   struct WaitInfo
   {
     WaitInfo(Semaphore semaphore, WaitStageFlags const& waitStages)
@@ -1093,13 +1437,6 @@ namespace vulkan
 
     Semaphore semaphore;
     WaitStageFlags waitStages;
-  };
-
-  enum class CommandBufferType
-  {
-    Transfer,
-    Graphic,
-    Compute
   };
 
   class CommandBufferImpl;
@@ -1116,13 +1453,13 @@ namespace vulkan
       return pimpl_;
     }
 
+    explicit CommandBuffer(Device const& device, CommandBufferCreateFlags const& createFlags, CommandBufferType type);
+
+    Semaphore submit(std::vector<WaitInfo> const& waitInfos = {});
+
     void begin(CommandBufferBeginFlags const& beginFlags);
 
-    void end();
-
     void beginRender(Framebuffer const& framebuffer, RenderPass const& renderPass);
-
-    void endRender();
 
     // Graphic commands
 
@@ -1152,9 +1489,9 @@ namespace vulkan
 
     void bindImage(Image const& image, Sampler const& sampler, BindingInfo const& bindingInfo);
 
-    void bindImage(Image const& image, BindingInfo const& bindingInfo);
+    void bindVertexBuffer(Buffer const& buffer);
 
-    void bindImage(Sampler const& sampler, BindingInfo const& bindingInfo);
+    void bindIndexBuffer(Buffer const& buffer, IndexType indexType);
 
     // Transfer commands
 
@@ -1185,168 +1522,10 @@ namespace vulkan
     std::shared_ptr<CommandBufferImpl> pimpl_;
   };
 
-  // Device -----------------------------------------------------------------------------------------------------------
+  std::vector<CommandBuffer> createCommandBuffers(
+      Device const& device, utils::SizeT count, CommandBufferCreateFlags const& createFlags, CommandBufferType type);
 
-  SR_MAKE_BIT_FLAGS(DeviceCreate, {};)
-
-  class DeviceImpl;
-
-  class Device
-  {
-   public:
-    explicit Device(std::shared_ptr<DeviceImpl> pimpl) : pimpl_(std::move(pimpl))
-    {
-    }
-
-    [[nodiscard]] std::shared_ptr<DeviceImpl> const& getImpl() const
-    {
-      return pimpl_;
-    }
-
-    [[nodiscard]] std::vector<CommandBuffer> createCommandBuffers(
-        utils::SizeT count, CommandBufferCreateFlags const& createFlags, CommandBufferType type) const;
-
-    [[nodiscard]] CommandBuffer createCommandBuffer(
-        CommandBufferCreateFlags const& createFlags, CommandBufferType type) const;
-
-    [[nodiscard]] std::vector<Semaphore> submitCommandBuffers(
-        std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos, CommandBufferType type) const;
-
-    [[nodiscard]] Semaphore submitCommandBuffer(
-        CommandBuffer const& commandBuffer, std::vector<WaitInfo> const& waitInfos, CommandBufferType type) const;
-
-    [[nodiscard]] Buffer createBuffer(BufferCreateFlags const& createFlags, MemoryType memoryType,
-        BufferUsageFlags const& usage, utils::SizeT size, utils::AlignmentT alignment = 0) const;
-
-    [[nodiscard]] Image createImage(ImageCreateFlags const& createFlags, Format format, ImageUsageFlags const& usage,
-        utils::Extent3D const& extent, utils::SizeT mipLevelsCount = 1, utils::SizeT arrayLayersCount = 1,
-        SampleCountFlagBits sampleCount = SampleCountFlagBits::e1,
-        MemoryType memoryType = MemoryType::DeviceLocal) const;
-
-    [[nodiscard]] Framebuffer createFramebuffer(
-        FramebufferCreateFlags const& createFlags, std::vector<Image> const& images) const;
-
-    [[nodiscard]] Image createImage(Image const& image, ImageSubResourceRange const& range,
-        std::optional<Format> const& formatView, ComponentMapping const& components = ComponentMapping{}) const;
-
-    [[nodiscard]] Sampler createSampler(SamplerCreateFlags createFlags = {}) const;
-
-    [[nodiscard]] Shader createShader(ShaderCreateFlags createFlags = {}) const;
-
-    [[nodiscard]] ShaderState createShaderState(ShaderStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] VertexInputState createVertexInputState(VertexInputStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] InputAssemblyState createInputAssemblyState(
-        InputAssemblyStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] RasterizationState createRasterizationState(
-        RasterizationStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] MultisampleState createMultisampleState(MultisampleStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] DepthStencilState createDepthStencilState(DepthStencilStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] ColorBlendState createColorBlendState(ColorBlendStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] ViewportState createViewportState(ViewportStateCreateFlags const& createFlags = {}) const;
-
-    [[nodiscard]] RenderPass createRenderPass(RenderPassCreateFlags const& createFlags = {}) const;
-
-   private:
-    std::shared_ptr<DeviceImpl> pimpl_;
-  };
-
-  // PhysicalDevice ---------------------------------------------------------------------------------------------------
-
-  enum class PhysicalDeviceType
-  {
-    Other = 0,
-    IntegratedGpu = 1,
-    DiscreteGpu = 2,
-    VirtualGpu = 3,
-    Cpu = 4,
-  };
-
-  class PhysicalDeviceImpl;
-
-  class PhysicalDevice
-  {
-   public:
-    explicit PhysicalDevice(std::shared_ptr<PhysicalDeviceImpl> pimpl) : pimpl_(std::move(pimpl))
-    {
-    }
-
-    [[nodiscard]] std::shared_ptr<PhysicalDeviceImpl> const& getImpl() const
-    {
-      return pimpl_;
-    }
-
-    [[nodiscard]] std::string name() const;
-
-    [[nodiscard]] PhysicalDeviceType type() const;
-
-   private:
-    std::shared_ptr<PhysicalDeviceImpl> pimpl_;
-  };
-
-  // Global -----------------------------------------------------------------------------------------------------------
-
-  SR_MAKE_BIT_FLAGS(Extensions, {Presentation = 1u << 0u};)
-
-  SR_MAKE_BIT_FLAGS(ValidationLayers, {StandardValidation = 1u << 0u};)
-
-  ExtensionsFlags getSupportedExtensions();
-
-  ValidationLayersFlags getSupportedValidationLayers();
-
-  // Application ------------------------------------------------------------------------------------------------------
-
-  SR_MAKE_BIT_FLAGS(ApplicationCreate, {};)
-
-  struct ApplicationInfo
-  {
-    ApplicationInfo() = default;
-
-    ApplicationInfo(std::string appName, std::shared_ptr<utils::Version> appVersion, std::string engineName,
-        std::shared_ptr<utils::Version> engineVersion)
-        : appName(std::move(appName)),
-          appVersion(std::move(appVersion)),
-          engineName(std::move(engineName)),
-          engineVersion(std::move(engineVersion))
-    {
-    }
-
-    std::string appName = "Unknown";
-    std::shared_ptr<utils::Version> appVersion = std::make_shared<utils::VersionList>(0u, 0u, 0u);
-    std::string engineName = "Unknown";
-    std::shared_ptr<utils::Version> engineVersion = std::make_shared<utils::VersionList>(0u, 0u, 0u);
-  };
-
-  class ApplicationImpl;
-
-  class Application
-  {
-   public:
-    explicit Application(std::shared_ptr<ApplicationImpl> pimpl) : pimpl_(std::move(pimpl))
-    {
-    }
-
-    [[nodiscard]] std::shared_ptr<ApplicationImpl> const& getImpl() const
-    {
-      return pimpl_;
-    }
-
-    explicit Application(ApplicationCreateFlags const& createFlags, ApplicationInfo const& appInfo,
-        ExtensionsFlags const& extensions = {}, ValidationLayersFlags const& layers = {},
-        utils::debug::Messenger const& messenger = {});
-
-    [[nodiscard]] std::vector<PhysicalDevice> getSupportedPhysicalDevices() const;
-
-    [[nodiscard]] Device createDevice(DeviceCreateFlags const& createFlags, PhysicalDevice const& physicalDevice) const;
-
-   private:
-    std::shared_ptr<ApplicationImpl> pimpl_;
-  };
+  std::vector<Semaphore> submitCommandBuffers(
+      Device const& device, std::vector<std::pair<CommandBuffer, std::vector<WaitInfo>>> const& submitInfos);
 
 }  // namespace vulkan

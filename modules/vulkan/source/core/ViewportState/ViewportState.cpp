@@ -4,50 +4,138 @@ namespace vulkan
 {
   // utils ------------------------------------------------------------------------------------------------------------
 
+  vk::Rect2D toVkScissor(Viewport const& viewport)
+  {
+    return {{static_cast<int32_t>(viewport.getPosition().x()), static_cast<int32_t>(viewport.getPosition().y())},
+        {static_cast<uint32_t>(viewport.getExtent().width()), static_cast<uint32_t>(viewport.getExtent().height())}};
+  }
+
+  // Viewport ---------------------------------------------------------------------------------------------------------
+
+  Viewport::Viewport(Device const& device, ViewportCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<ViewportImpl>(device.getImpl(), createFlags))
+  {
+  }
+
+  void Viewport::setExtent(utils::Extent2Df const& val) noexcept
+  {
+    pimpl_->setExtent(val);
+  }
+
+  void Viewport::setPosition(utils::Position2Df const& val) noexcept
+  {
+    pimpl_->setPosition(val);
+  }
+
+  void Viewport::setMinDepth(float val) noexcept
+  {
+    pimpl_->setMinDepth(val);
+  }
+
+  void Viewport::setMaxDepth(float val) noexcept
+  {
+    pimpl_->setMaxDepth(val);
+  }
+
+  void Viewport::setViewport(utils::Viewport const& val) noexcept
+  {
+    return pimpl_->setViewport(val);
+  }
+
+  utils::Extent2Df Viewport::getExtent() const noexcept
+  {
+    return pimpl_->getExtent();
+  }
+
+  utils::Position2Df Viewport::getPosition() const noexcept
+  {
+    return pimpl_->getPosition();
+  }
+
+  float Viewport::getMinDepth() const noexcept
+  {
+    return pimpl_->getMinDepth();
+  }
+
+  float Viewport::getMaxDepth() const noexcept
+  {
+    return pimpl_->getMaxDepth();
+  }
+
+  utils::Viewport Viewport::getViewport() const noexcept
+  {
+    return pimpl_->getViewport();
+  }
+
   // ViewportStateImpl ------------------------------------------------------------------------------------------------
 
-  void ViewportStateImpl::addViewport(utils::Viewport const& viewport, utils::Rect2D const& scissor)
+  void ViewportStateImpl::addViewport(Viewport const& viewport)
   {
-    viewports_.push_back(toVkViewport(viewport));
-    scissors_.push_back(toVkRect2D(scissor));
+    viewports_.insert({viewport, toVkScissor(viewport)});
+    needUpdate_ = true;
   }
 
-  void ViewportStateImpl::setViewport(utils::IndexT index, utils::Viewport const& viewport)
+  void ViewportStateImpl::removeViewport(Viewport const& viewport)
   {
-    viewports_[index] = toVkViewport(viewport);
+    viewports_.erase(viewport);
+    needUpdate_ = true;
   }
 
-  void ViewportStateImpl::setScissor(utils::IndexT index, utils::Rect2D const& scissor)
+  void ViewportStateImpl::setScissor(Viewport const& viewport, utils::Rect2D const& scissor) noexcept
   {
-    scissors_[index] = toVkRect2D(scissor);
+    viewports_.at(viewport) = toVkRect2D(scissor);
+    needUpdate_ = true;
   }
 
-  void ViewportStateImpl::removeViewport(utils::IndexT index)
+  utils::Rect2D ViewportStateImpl::getScissor(Viewport const& viewport) noexcept
   {
-    viewports_.erase(viewports_.begin() + index);
-    scissors_.erase(scissors_.begin() + index);
+    auto vkScissor = viewports_.at(viewport);
+
+    return utils::Rect2D(vkScissor.offset.x, vkScissor.offset.y, vkScissor.extent.width, vkScissor.extent.height);
+  }
+
+  void ViewportStateImpl::update()
+  {
+    if (needUpdate_)
+    {
+      needUpdate_ = false;
+
+      vkViewports_.clear();
+      vkScissors_.clear();
+
+      for (auto const& p : viewports_)
+      {
+        vkViewports_.push_back(toVkViewport(p.first.getViewport()));
+        vkScissors_.push_back(p.second);
+      }
+    }
   }
 
   // ViewportState ----------------------------------------------------------------------------------------------------
 
-  void ViewportState::addViewport(utils::Viewport const& viewport, utils::Rect2D const& scissor)
+  ViewportState::ViewportState(Device const& device, ViewportStateCreateFlags const& createFlags)
+      : pimpl_(std::make_shared<ViewportStateImpl>(device.getImpl(), createFlags))
   {
-    pimpl_->addViewport(viewport, scissor);
   }
 
-  void ViewportState::setViewport(utils::IndexT index, utils::Viewport const& viewport)
+  void ViewportState::addViewport(Viewport const& viewport)
   {
-    pimpl_->setViewport(index, viewport);
+    pimpl_->addViewport(viewport);
   }
 
-  void ViewportState::setScissor(utils::IndexT index, utils::Rect2D const& scissor)
+  void ViewportState::removeViewport(Viewport const& viewport)
   {
-    pimpl_->setScissor(index, scissor);
+    pimpl_->removeViewport(viewport);
   }
 
-  void ViewportState::removeViewport(utils::IndexT index)
+  void ViewportState::setScissor(Viewport const& viewport, utils::Rect2D const& scissor) noexcept
   {
-    pimpl_->removeViewport(index);
+    pimpl_->setScissor(viewport, scissor);
+  }
+
+  [[nodiscard]] utils::Rect2D ViewportState::getScissor(Viewport const& viewport) noexcept
+  {
+    return pimpl_->getScissor(viewport);
   }
 
 }  // namespace vulkan

@@ -1,28 +1,18 @@
 #include "Image.hpp"
+#include "../../../include/vulkan/core.hpp"
 
 namespace vulkan
 {
   // utils  -----------------------------------------------------------------------------------------------------------
 
-  vk::ImageCreateFlags toVkImageCreateFlags(ImageCreateFlags const& createFlags)
+  VkImageCreateFlags toVkImageCreateFlags(ImageCreateFlags const& createFlags)
   {
-    return vk::ImageCreateFlags(static_cast<VkImageCreateFlags>(createFlags));
+    return static_cast<VkImageCreateFlags>(createFlags);
   }
 
-  vk::ImageUsageFlags toVkImageUsage(ImageUsageFlags usage)
+  VkImageUsageFlags toVkImageUsage(ImageUsageFlags usage)
   {
-    return vk::ImageUsageFlags(static_cast<VkImageUsageFlags>(usage));
-  }
-
-  vk::ComponentSwizzle toVkComponentSwizzle(ComponentSwizzle component)
-  {
-    return static_cast<vk::ComponentSwizzle>(component);
-  }
-
-  vk::ComponentMapping toVkComponentMapping(ComponentMapping const& components)
-  {
-    return vk::ComponentMapping(toVkComponentSwizzle(components.r), toVkComponentSwizzle(components.g),
-        toVkComponentSwizzle(components.b), toVkComponentSwizzle(components.a));
+    return static_cast<VkImageUsageFlags>(usage);
   }
 
   VezImageSubresourceRange toVkImageSubResourceRange(ImageSubResourceRange const& range)
@@ -36,88 +26,78 @@ namespace vulkan
     return result;
   }
 
-  vk::AttachmentLoadOp toVkAttachmentLoadOp(AttachmentLoadOp op)
-  {
-    return static_cast<vk::AttachmentLoadOp>(op);
-  }
-
-  vk::AttachmentStoreOp toVkAttachmentStoreOp(AttachmentStoreOp op)
-  {
-    return static_cast<vk::AttachmentStoreOp>(op);
-  }
-
-  vk::ImageType pickVkImageType(utils::Extent3D const& extent)
+  VkImageType pickVkImageType(utils::Extent3D const& extent)
   {
     if (extent.height() == 1)
     {
-      return vk::ImageType::e1D;
+      return VK_IMAGE_TYPE_1D;
     }
     else if (extent.depth() == 1)
     {
-      return vk::ImageType::e2D;
+      return VK_IMAGE_TYPE_2D;
     }
     else
     {
-      return vk::ImageType::e3D;
+      return VK_IMAGE_TYPE_3D;
     }
   }
 
-  vk::ImageViewType pickVkImageViewType(vk::ImageType type, ImageSubResourceRange const& range)
+  VkImageViewType pickVkImageViewType(VkImageType type, ImageSubResourceRange const& range)
   {
     switch (type)
     {
-      case vk::ImageType::e1D:
+      case VK_IMAGE_TYPE_1D:
         if (range.arrayLayerCount > 1)
         {
-          return vk::ImageViewType::e1DArray;
+          return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
         }
-        return vk::ImageViewType::e1D;
-      case vk::ImageType::e2D:
+        return VK_IMAGE_VIEW_TYPE_1D;
+      case VK_IMAGE_TYPE_2D:
         if (range.arrayLayerCount > 1)
         {
-          return vk::ImageViewType::e2DArray;
+          return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         }
-        return vk::ImageViewType::e2D;
-      case vk::ImageType::e3D:
+        return VK_IMAGE_VIEW_TYPE_2D;
+      case VK_IMAGE_TYPE_3D:
         if (range.arrayLayerCount > 1)
         {
           throw std::runtime_error("3D image array not supported");
         }
-        return vk::ImageViewType::e3D;
+        return VK_IMAGE_VIEW_TYPE_3D;
+      default:
+        throw std::runtime_error("undefined image view type");
     }
-    throw std::runtime_error("undefined image view type");
   }
 
-  vk::Image createVkImage(Device const& device, ImageCreateFlags const& createFlags, vk::Format format,
+  vk::Image createVkImage(Device const& device, ImageCreateFlags const& createFlags, Format format,
       ImageUsageFlags const& usage, utils::Extent3D const& extent, utils::SizeT mipLevelsCount,
-      utils::SizeT arrayLayersCount, SampleCountFlagBits sampleCount, MemoryType memoryType, vk::ImageType type)
+      utils::SizeT arrayLayersCount, SampleCountFlagBits sampleCount, MemoryType memoryType, VkImageType type)
   {
     VezImageCreateInfo createInfo = {};
-    createInfo.flags = static_cast<VkImageCreateFlags>(toVkImageCreateFlags(createFlags));
-    createInfo.usage = static_cast<VkImageUsageFlags>(
-        toVkImageUsage(usage) | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst);
-    createInfo.format = static_cast<VkFormat>(format);
+    createInfo.flags = toVkImageCreateFlags(createFlags);
+    createInfo.usage = toVkImageUsage(usage) | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    createInfo.format = toVkFormat(format);
     createInfo.extent = toVkExtent(extent);
     createInfo.arrayLayers = static_cast<uint32_t>(arrayLayersCount);
     createInfo.mipLevels = static_cast<uint32_t>(mipLevelsCount);
-    createInfo.samples = static_cast<VkSampleCountFlagBits>(toVkSampleCount(sampleCount));
+    createInfo.samples = toVkSampleCount(sampleCount);
     createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    createInfo.imageType = static_cast<VkImageType>(type);
+    createInfo.imageType = type;
 
     VkImage result = nullptr;
     checkResult(vezCreateImage(device.getImpl()->getVkDevice(), toVkMemoryFlags(memoryType), &createInfo, &result));
     return result;
   }
 
-  vk::ImageView createVkImageView(Device const& device, vk::Image image, vk::Format format, vk::ImageType type,
+  vk::ImageView createVkImageView(Device const& device, vk::Image image, Format format, VkImageType type,
       ImageSubResourceRange const& range, ComponentMapping const& components)
   {
     VezImageViewCreateInfo createInfo = {};
     createInfo.image = image;
-    createInfo.format = static_cast<VkFormat>(format);
+    createInfo.format = toVkFormat(format);
     createInfo.components = toVkComponentMapping(components);
     createInfo.subresourceRange = toVkImageSubResourceRange(range);
-    createInfo.viewType = static_cast<VkImageViewType>(pickVkImageViewType(type, range));
+    createInfo.viewType = pickVkImageViewType(type, range);
 
     VkImageView result = nullptr;
     checkResult(vezCreateImageView(device.getImpl()->getVkDevice(), &createInfo, &result));
@@ -137,12 +117,11 @@ namespace vulkan
         arrayLayersCount_(arrayLayersCount),
         sampleCount_(sampleCount)
   {
-    vk::Format vkImageFormat = toVkFormat(format);
-    vk::ImageType vkImageType = pickVkImageType(extent);
+    VkImageType imageType = pickVkImageType(extent);
 
-    vkImage_ = createVkImage(device_, createFlags, vkImageFormat, usage, extent, mipLevelsCount, arrayLayersCount,
-        sampleCount, memoryType, vkImageType);
-    vkImageView_ = createVkImageView(device_, vkImage_, vkImageFormat, vkImageType,
+    vkImage_ = createVkImage(device_, createFlags, format, usage, extent, mipLevelsCount, arrayLayersCount, sampleCount,
+        memoryType, imageType);
+    vkImageView_ = createVkImageView(device_, vkImage_, format, imageType,
         ImageSubResourceRange(0, mipLevelsCount_, 0, arrayLayersCount_), ComponentMapping());
   }
 
@@ -160,8 +139,8 @@ namespace vulkan
         range_(range),
         image_(std::move(image)),
         format_(formatView ? *formatView : image_.getFormat()),
-        vkImageView_(createVkImageView(device_, image_.getImpl()->getVkImage(), toVkFormat(format_),
-            pickVkImageType(image_.getExtent()), range, components))
+        vkImageView_(createVkImageView(
+            device_, image_.getImpl()->getVkImage(), format_, pickVkImageType(image_.getExtent()), range, components))
   {
   }
 
@@ -180,22 +159,36 @@ namespace vulkan
 
   // Image ------------------------------------------------------------------------------------------------------------
 
-  [[nodiscard]] Format Image::getFormat() const
+  Image::Image(Device const& device, ImageCreateFlags const& createFlags, utils::Extent3D const& extent, Format format,
+      ImageUsageFlags const& usage, utils::SizeT mipLevelsCount, utils::SizeT arrayLayersCount,
+      SampleCountFlagBits sampleCount, MemoryType memoryType)
+      : pimpl_(std::make_shared<BaseImage>(device.getImpl(), createFlags, format, usage, extent, mipLevelsCount,
+            arrayLayersCount, sampleCount, memoryType))
+  {
+  }
+
+  Image::Image(Device const& device, Image const& image, ImageSubResourceRange const& range,
+      std::optional<Format> const& formatView, ComponentMapping const& components)
+      : pimpl_(std::make_shared<ViewImage>(device.getImpl(), image, range, formatView, components))
+  {
+  }
+
+  [[nodiscard]] Format Image::getFormat() const noexcept
   {
     return pimpl_->getFormat();
   }
 
-  [[nodiscard]] utils::Extent3D Image::getExtent() const
+  [[nodiscard]] utils::Extent3D Image::getExtent() const noexcept
   {
     return pimpl_->getExtent();
   }
 
-  [[nodiscard]] ImageSubResourceRange Image::getSubResourceRange() const
+  [[nodiscard]] ImageSubResourceRange Image::getSubResourceRange() const noexcept
   {
     return pimpl_->getRange();
   }
 
-  [[nodiscard]] SampleCountFlagBits Image::getSampleCount() const
+  [[nodiscard]] SampleCountFlagBits Image::getSampleCount() const noexcept
   {
     return pimpl_->getSampleCount();
   }
